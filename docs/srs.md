@@ -26,7 +26,7 @@ Out of scope:
 - **YAML**: Human-readable data serialization format (“YAML Ain’t Markup Language”).  
 
 ### 1.4 References  
--   Arduino Docs: Arduino Language Reference
+- Arduino Docs: Arduino Language Reference
 - Arduino UNO R4 WiFi datasheet.  
 - Espressif ESP32-S3 technical reference manual.  
 
@@ -47,20 +47,14 @@ The system is a distributed IoT solution. Each **sensor package** collects local
 - Hardware: Arduino R4 WiFi, ESP32-S3 Zero, DS18B20, DHT11
 - Connectivity: WiFi 2.4 GHz.  
 - Data format: YAML.  
-- Remote endpoint: REST API endpoint (database-backed). 
+- Remote endpoint: Socket/DNS (database-backed). 
 
-
+Ex:
 ``` yaml
 192.168.1.100:12345
 Sensor_data:
   temp: 25
   hum: 80
-```
-
-``` http
-GET /packages/{id}
-GET /packages/{id}/history
-POST /packages/{id}/scan
 ```
 
 ### 2.4 Design and Implementation Constraints  
@@ -85,7 +79,7 @@ POST /packages/{id}/scan
 **Outputs**: WiFi-transmitted YAML packets.  
 
 **Functional Requirements**:  
-- **(discuss)FR-1: Sensor package shall measure temperature and humidity every 60 seconds**  
+- FR-1: Sensor package shall measure temperature and humidity every 60 seconds  
 - FR-2: Sensor package shall transmit data in YAML format to the server.  
 - FR-3: Sensor package shall retry transmission up to 3 times in case of failure.  
 
@@ -95,7 +89,7 @@ POST /packages/{id}/scan
 **Functional Requirements**:  
 - FR-4: Server shall receive data from multiple sensor packages.  
 - FR-5: Server shall store all sensor data, on onboard flash, in YAML format, upon failure to connect to the database.  
-- **(discuss)FR-6: Server shall forward stored data to a remote database endpoint every 60 seconds.**  
+- FR-6: Server shall forward stored data to a remote database endpoint every 60 seconds.  
 - FR-7: Server shall acknowledge successful receipt to sensor packages.  
 
 ---
@@ -106,11 +100,11 @@ POST /packages/{id}/scan
 - Arduino R4 WiFi GPIO for temperature/humidity sensors.  
 
 ### 4.2 Software Interfaces  
-- **(discuss)REST API endpoint for database communication.**  
+- **(discuss)Socket/DNS endpoint for database communication.**  
 
 ### 4.3 Communication Interfaces  
 - WiFi IEEE 802.11 b/g/n.  
-- **(discuss)HTTP(S) transport for database communication.**  
+- **(discuss)HTTP/HTTPS transport for database communication.**  
 
 ---
 
@@ -151,8 +145,7 @@ battery: 95
 
 ## 6. Non-Functional Requirements
 - Reliability: Data is never lost, even if transmission temporarily fails.
-- **(discuss)Performance: Sensor package measurement and transmission-to-database cycle ≤ 60 seconds.**
-- Security: Basic transport encryption (HTTPS).
+- Performance: Sensor package measurement and transmission-to-database cycle = 60 seconds.
 - Usability: Normal function without setup after loss of power
 - Scalability: Prototype supports up to 100 sensor packages per server.
 
