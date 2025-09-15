@@ -13,7 +13,7 @@ void printWifiStatus();
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  delay(2000);
 
   if (WiFi.status() == WL_NO_MODULE) {
     Serial.println("Communication with WiFi module failed");
