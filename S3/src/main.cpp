@@ -11,6 +11,16 @@ size_t bytes_read;
 void setup()
 {
     Serial.begin(115200);
+    int i = 0;
+    while (i < 7)
+    {
+        Serial.println(".");
+        delay(1000);
+        ++i;
+    }
+    /* delay(5000); */
+
+    Serial.println("We made it\n");
 
     // ssid and password should be placed in secrets.h
     WiFi.begin(ssid, password);
@@ -43,7 +53,7 @@ void loop()
 
         client.print(message);
         client.stop();
-        
+
         Serial.println("Server is listening...");
     }
     else
