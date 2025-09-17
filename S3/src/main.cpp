@@ -4,7 +4,11 @@
 
 WiFiClient client;
 WiFiServer server(5000);
-uint8_t buffer[4096];
+IPAddress local_IP(192, 168, 1, 184); // Ändra efter behov
+IPAddress gateway(192, 168, 1, 1);
+IPAddress subnet(255, 255, 255, 0);
+// uint8_t buffer[4096];
+uint8_t buffer[256];    // temporarily test a smaller buffer
 char message[64];
 size_t bytes_read;
 
@@ -14,13 +18,14 @@ void setup()
     int i = 0;
     while (i < 7)
     {
-        Serial.println(".");
+        Serial.print(".");
         delay(1000);
         ++i;
     }
-    /* delay(5000); */
 
-    Serial.println("We made it\n");
+    if (!WiFi.config(local_IP, gateway, subnet)) {
+        Serial.println("Failed to config");
+    }
 
     // ssid and password should be placed in secrets.h
     WiFi.begin(ssid, password);
@@ -46,15 +51,22 @@ void loop()
     if (client)
     {
         Serial.println("Client connected.");
-        bytes_read = client.read(buffer, sizeof(buffer) - 1);
-        buffer[bytes_read] = '\0';
 
-        snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
+        while (client.connected() && !client.available()) {
+            delay(10);
+        }
 
-        client.print(message);
-        client.stop();
+        if (client.available()) {
+            bytes_read = client.read(buffer, sizeof(buffer) - 1);
+            buffer[bytes_read] = '\0';
 
-        Serial.println("Server is listening...");
+            snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
+
+            client.print(message);
+            client.stop();
+
+            Serial.println("Server is listening...");
+        }
     }
     else
         delay(1000);
