@@ -1,0 +1,6 @@
+Arduino/.pio/
+
+S3/.pio/
+
+*.tmp
+*.log
