@@ -35,7 +35,7 @@ void setup() {
 
   printWifiStatus();
 
-  Serial.print("Connected.\nClient IP: ");
+  Serial.print("Connected.\n");
 
   Serial.println("Connecting to server...");
   if (client.connect(server, port)) {
@@ -58,13 +58,25 @@ void loop() {
   else {
     Serial.println("\nReconnecting...");
     if (client.connect(server, port)) {
-      client.println("Sending a test message to the server!");
+      client.println("Sending a new test message to the server!");
+      unsigned long start = millis();
+      while (!client.available() && millis() - start < 2000) {
+        delay(10);
+      }
+
+      while (client.available())
+      {
+        char c = client.read();
+        Serial.print(c);
+      }
+      Serial.println();
     }
     else {
       Serial.println("Connection to server failed");
     }
+    client.stop();
   }
-  delay(1000);
+  delay(3000);
 }
 
 void printWifiStatus() {
