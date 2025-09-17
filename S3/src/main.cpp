@@ -52,22 +52,21 @@ void loop()
     {
         Serial.println("Client connected.");
 
-        while (client.connected() && !client.available()) {
-            delay(10);
+        while (client.connected()) {
+            if (client.available()) {
+                bytes_read = client.read(buffer, sizeof(buffer) - 1);
+                buffer[bytes_read] = '\0';
+
+                snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
+
+                client.print(message);
+                client.stop();
+
+                Serial.println("Server is listening...");
+            }
         }
-
-        if (client.available()) {
-            bytes_read = client.read(buffer, sizeof(buffer) - 1);
-            buffer[bytes_read] = '\0';
-
-            snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
-
-            client.print(message);
-            client.stop();
-
-            Serial.println("Server is listening...");
-        }
+        client.stop();
+        Serial.println("Client disconnected. Server is listening...");
     }
-    else
-        delay(1000);
+    delay(1000);
 }
