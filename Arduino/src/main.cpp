@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "WiFiS3.h"
-#include "../lib/secrets.h"
+#include "secrets.h"
 
 WiFiClient client;
 IPAddress server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
@@ -36,15 +36,11 @@ void setup() {
   printWifiStatus();
 
   Serial.print("Connected.\nClient IP: ");
-  Serial.println(WiFi.localIP());
 
   Serial.println("Connecting to server...");
   if (client.connect(server, port)) {
     Serial.println("Connected to server");
-    client.println("GET / HTTP/1.1");
-    client.println("Host: 192.168.1.189");
-    client.println("Connection: close");
-    client.println();
+    client.println("Sending a test message to the server!");
   }
   else {
     Serial.println("Connection to server failed");
@@ -52,15 +48,21 @@ void setup() {
 }
 
 void loop() {
-  if (client.connected() || client.available()) {
+  if (client.connected()) {
     while (client.available())
     {
       char c = client.read();
       Serial.print(c);
     }
   }
-  else if (!client.connected() && !client.available()) {
-    client.stop();
+  else {
+    Serial.println("\nReconnecting...");
+    if (client.connect(server, port)) {
+      client.println("Sending a test message to the server!");
+    }
+    else {
+      Serial.println("Connection to server failed");
+    }
   }
   delay(1000);
 }
@@ -70,10 +72,13 @@ void printWifiStatus() {
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
 
-
   IPAddress ip = WiFi.localIP();
   Serial.print("IP Address: ");
   Serial.println(ip);
+
+  IPAddress subnet = WiFi.subnetMask();
+  Serial.print("Subnet: ");
+  Serial.println(subnet);
 
   long rssi = WiFi.RSSI();
   Serial.print("signal strength (RSSI):");
