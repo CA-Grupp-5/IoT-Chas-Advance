@@ -7,6 +7,7 @@ IPAddress server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
 char ssid[ ] = SECRET_SSID;
 char pass[ ] = SECRET_PASSWORD;
 uint32_t start_time = 0;
+// unint32_t last_sent = 0; // gonna try this instead of delay
 const uint16_t port = SERVER_PORT;
 
 void printWifiStatus();
@@ -40,7 +41,10 @@ void setup() {
   Serial.println("Connecting to server...");
   if (client.connect(server, port)) {
     Serial.println("Connected to server");
-    client.println("Sending a test message to the server!");
+    client.print("Sending a test message to the server!\n");
+    // just want to check why initial request is 39 bytes, and then 42 bytes
+    Serial.print("Sending a test message to the server!\n");
+    Serial.print(strlen("Sending a test message to the server!\n"));
   }
   else {
     Serial.println("Connection to server failed");
@@ -56,9 +60,10 @@ void loop() {
     }
   }
   else {
-    Serial.println("\nReconnecting...");
+    Serial.println("\nReconnecting...\n");
     if (client.connect(server, port)) {
-      client.println("Sending a new test message to the server!");
+      client.print("Sending a new test message to the server!\n");
+      Serial.print(strlen("Sending a test message to the server!\n"));
       unsigned long start = millis();
       while (!client.available() && millis() - start < 2000) {
         delay(10);
@@ -76,6 +81,7 @@ void loop() {
     }
     client.stop();
   }
+  // next: request intervall 60000 = 60 secs. Loop is going to be blocked :/ How will it affect server? Probably not ideal to slap a delay??
   delay(3000);
 }
 
