@@ -59,6 +59,12 @@ void loop()
 
                 snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
 
+                // just to check message from client
+                Serial.println(message);
+                Serial.print("Message from client: ");
+                Serial.print((char*)buffer);
+
+                // send back response to client
                 client.print(message);
                 client.stop();
 
