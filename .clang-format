@@ -1,0 +1,37 @@
+# .clang-format
+
+# Base style (start with LLVM defaults, override as needed)
+BasedOnStyle: LLVM
+
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+
+# Line length
+ColumnLimit: 100
+
+# Braces
+BreakBeforeBraces: Allman # Function and struct braces on new line
+AllowShortFunctionsOnASingleLine: Empty # Empty functions can stay one line if empty
+AllowShortLoopsOnASingleLine: true # Keep while(…) ; on same line
+
+# Pointer style
+PointerAlignment: Right # char *ptr
+
+# Spaces
+SpaceBeforeParens: ControlStatements # space before if/while/for parens
+SpaceAfterCStyleCast: true
+SpaceBeforeAssignmentOperators: true
+
+# Empty lines
+AllowShortBlocksOnASingleLine: false
+
+# Other formatting
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Left
+SortIncludes: false
+
+# Misc
+DerivePointerAlignment: false
