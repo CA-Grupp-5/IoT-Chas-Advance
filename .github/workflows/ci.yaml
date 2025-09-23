@@ -1,0 +1,71 @@
+name: IoT Chas Advance CI Pipeline
+on:
+    push:
+        branches:
+            - main
+            - develop
+            - feature-**
+    pull_request:
+        branches:
+            - main
+            - develop
+
+jobs:
+    # pre-commit:
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - name: Checkout repository
+    #           uses: actions/checkout@v4
+
+    #         - name: Setup Python
+    #           uses: actions/setup-python@v5
+    #           with:
+    #               python-version: '3.11'
+
+    #         - name: Install pre-commit
+    #           run: pip install pre-commit
+
+    #         - name: Run pre-commit hooks on all files
+    #           run: pre-commit run --all-files
+
+    build:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                board: [uno_r4_wifi, esp32_broker]
+
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Cache dependencies
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cache/pip
+                      ~/.platformio/.cache
+                  key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+
+            - name: Setup python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: '3.11'
+
+            - name: Install PlatformIO Core
+              run: pip install --upgrade platformio
+
+            - name: Build project (${{matrix.board}})
+              run: |
+                  if [["${{matrix.board}}" == "uno_r4_wifi"]]; then
+                    cd Arduino && pio run -e uno_r4_wifi
+                  else
+                    cd S3 && pio run -e esp32_broker
+                  fi
+
+            # - name: Static code analysis (${{matrix.board}})
+            #   run: |
+            #       if [["${{matrix.board}}" == "uno_r4_wifi"]]; then
+            #         cd Arduino && pio check -e uno_r4_wifi --fail-on-defect=medium --skip-packages
+            #       else
+            #         cd S3 && pio check -e esp32_broker --fail-on-defect=medium --skip-packages
+            #       fi
