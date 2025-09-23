@@ -57,9 +57,9 @@ jobs:
             - name: Build project (${{matrix.board}})
               run: |
                   if [["${{matrix.board}}" == "uno_r4_wifi"]]; then
-                    cd Arduino && pio run -e uno_r4_wifi
+                    cd Arduino && pio run -e uno_r4_wifi -DUNIT_TEST
                   else
-                    cd S3 && pio run -e esp32_broker
+                    cd S3 && pio run -e esp32_broker -DUNIT_TEST
                   fi
 
             # - name: Static code analysis (${{matrix.board}})

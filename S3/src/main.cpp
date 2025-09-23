@@ -1,6 +1,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#ifdef UNIT_TEST
+#include "secrets.example.h"
+#else
 #include "secrets.h"
+#endif
 
 WiFiClient client;
 WiFiServer server(5000);
