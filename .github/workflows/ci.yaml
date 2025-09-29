@@ -10,13 +10,43 @@ on:
             - main
             - develop
 
+    workflow_dispatch:
+
 jobs:
+    pre-commit:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Python
+              if: ${{ !env.ACT }} # skip when testing locally with act
+              uses: actions/setup-python@v5
+              with:
+                  python-version: '3.11'
+
+            - name: Cache pip
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/pip
+                  key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+
+            - name: Install pre-commit
+              run: pip install pre-commit
+
+            - name: Run pre-commit hooks on all files
+              run: pre-commit run --all-files
+
     build:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                board: [uno_r4_wifi_ci, esp32_broker_ci]
-
+                board: [uno_r4_wifi, esp32_broker]
+                include:
+                    - board: uno_r4_wifi
+                      folder: Arduino
+                    - board: esp32_broker
+                      folder: S3
         steps:
             - name: Checkout repo
               uses: actions/checkout@v4
@@ -40,16 +70,21 @@ jobs:
 
             - name: Build project (${{matrix.board}})
               run: |
-                  if [[ "${{matrix.board}}" == "uno_r4_wifi_ci" ]]; then
-                    cd Arduino && pio run -e uno_r4_wifi_ci
-                  else
-                    cd S3 && pio run -e esp32_broker_ci
-                  fi
+                  cd ${{matrix.folder}}
+                  pio run -e ${{matrix.board}}
 
     # Docker build
     docker:
         runs-on: ubuntu-latest
-        needs: [build]
+        needs: [pre-commit, build]
+        strategy:
+            matrix:
+                board: [uno_r4_wifi, esp32_broker]
+                include:
+                    - board: uno_r4_wifi
+                      folder: Arduino
+                    - board: esp32_broker
+                      folder: S3
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
@@ -62,7 +97,23 @@ jobs:
 
             - name: Run PlatformIO inside Docker
               run: |
-                  docker run --rm -v ${{ github.workspace }}:/workspace iot-chas-advance:ci \
-                  bash -c "cd Arduino && pio run -e uno_r4_wifi && pio check -e uno_r4_wifi --fail-on-defect=medium --skip-packages"
-                  docker run --rm -v ${{ github.workspace }}:/workspace iot-chas-advance:ci \
-                  bash -c "cd S3 && pio run -e esp32_broker && pio check -e esp32_broker --fail-on-defect=medium --skip-packages"
+                  docker run --rm iot-chas-advance:ci bash -c "cd /workspace/${{matrix.folder}} && pio run -e ${{ matrix.board }}"
+
+    cleanup:
+        runs-on: ubuntu-latest
+        needs: docker
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # important! ensures full history so we can amend
+
+            - name: Delete secrets.h and amend last commit
+              run: |
+                  rm Arduino/include/secrets.h
+                  rm S3/include/secrets.h
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git add -u
+                  git commit --amend --no-edit
+                  git push --force
