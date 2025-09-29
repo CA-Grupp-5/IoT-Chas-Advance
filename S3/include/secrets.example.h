@@ -1,5 +1,5 @@
-#ifndef SECRETS_EXAMAMPLE_H
-#define SECRETS_EXAMAMPLE_H
-const char *ssid = "your_wifi_ssid";
-const char *password = "your_wifi_password";
+#ifndef SECRETS_EXAMPLE_H
+#define SECRETS_EXAMPLE_H
+#define ssid "your_wifi_ssid"
+#define password "your_wifi_password"
 #endif

@@ -1,4 +1,3 @@
-#include "secrets.h"
 #include <Arduino.h>
 #include <WiFi.h>
 #ifdef UNIT_TEST

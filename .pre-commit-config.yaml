@@ -11,7 +11,7 @@ repos:
       hooks:
           - id: platformio-check-arduino
             name: PlatformIO check (Arduino)
-            entry: bash -c "cd Arduino && pio run -e uno_r4_wifi && pio check -e uno_r4_wifi --fail-on-defect=high --fail-on-defect=medium --skip-packages"
+            entry: bash -c "cd Arduino && pio run -e uno_r4_wifi_ci && pio check -e uno_r4_wifi_ci --fail-on-defect=high --fail-on-defect=medium --skip-packages"
             language: python
             additional_dependencies:
                 - platformio
@@ -19,7 +19,7 @@ repos:
 
           - id: platformio-check-s3
             name: PlatformIO check (S3)
-            entry: bash -c "cd S3 && pio run -e esp32_broker && pio check -e esp32_broker --fail-on-defect=high --fail-on-defect=medium --skip-packages"
+            entry: bash -c "cd S3 && pio run -e esp32_broker_ci && pio check -e esp32_broker_ci --fail-on-defect=high --fail-on-defect=medium --skip-packages"
             language: python
             additional_dependencies:
                 - platformio
