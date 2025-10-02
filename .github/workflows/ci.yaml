@@ -10,8 +10,6 @@ on:
             - main
             - develop
 
-    workflow_dispatch:
-
 jobs:
     pre-commit:
         runs-on: ubuntu-latest
@@ -25,12 +23,6 @@ jobs:
               with:
                   python-version: '3.11'
 
-            - name: Cache pip
-              uses: actions/cache@v4
-              with:
-                  path: ~/.cache/pip
-                  key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
             - name: Install pre-commit
               run: pip install pre-commit
 
@@ -41,23 +33,15 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                board: [uno_r4_wifi, esp32_broker]
+                board: [uno_r4_wifi_ci, esp32_broker_ci]
                 include:
-                    - board: uno_r4_wifi
+                    - board: uno_r4_wifi_ci
                       folder: Arduino
-                    - board: esp32_broker
+                    - board: esp32_broker_ci
                       folder: S3
         steps:
             - name: Checkout repo
               uses: actions/checkout@v4
-
-            - name: Cache dependencies
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cache/pip
-                      ~/.platformio/.cache
-                  key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
 
             - name: Setup python
               if: ${{ !env.ACT }} # skip when testing locally with act
@@ -66,54 +50,111 @@ jobs:
                   python-version: '3.11'
 
             - name: Install PlatformIO Core
-              run: pip install --upgrade platformio
+              # run: pip install --upgrade platformio
+              run: pip install platformio
 
-            - name: Build project (${{matrix.board}})
+            - name: Load secrets
               run: |
-                  cd ${{matrix.folder}}
-                  pio run -e ${{matrix.board}}
+                  if [ -n "${ACT:-}" ]; then
+                    echo "Running with act, loading from .env"
+                    export $(grep -v '^#' .env | xargs)
+                  else
+                    echo "Running on GitHub Actions, loading from GitHub Secrets"
+                    export SECRET_SSID=${{secrets.SECRET_SSID}}
+                    export SECRET_PASSWORD=${{secrets.SECRET_PASSWORD}}
+                    export SERVER_IP1=${{secrets.SERVER_IP1}}
+                    export SERVER_IP2=${{secrets.SERVER_IP2}}
+                    export SERVER_IP3=${{secrets.SERVER_IP3}}
+                    export SERVER_IP4=${{secrets.SERVER_IP4}}
+                    export SERVER_PORT=${{secrets.SERVER_PORT}}
+                  fi
+                  mkdir -p ${{matrix.folder}}/include
+                  cat > ${{matrix.folder}}/include/secrets.h <<EOL
+                  #ifndef SECRETS_H
+                  #define SECRETS_H
 
-    # Docker build
-    docker:
+                  #define SECRET_SSID "${SECRET_SSID}"
+                  #define SECRET_PASSWORD "${SECRET_PASSWORD}"
+                  #define SERVER_IP1 "${SERVER_IP1}"
+                  #define SERVER_IP2 "${SERVER_IP2}"
+                  #define SERVER_IP3 "${SERVER_IP3}"
+                  #define SERVER_IP4 "${SERVER_IP4}"
+                  #define SERVER_PORT "${SERVER_PORT}"
+
+                  #endif
+                  EOL
+
+            - name: Build firmware (${{matrix.board}})
+              run: cd ${{matrix.folder}} && pio run -e ${{matrix.board}}
+
+    # Docker build image once and reuse
+    docker-build:
         runs-on: ubuntu-latest
-        needs: [pre-commit, build]
+        needs: build
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Build Docker image
+              run: docker build -t iot-chas-advance:ci .
+
+            # save image as artifact, can be reused across jobs
+            - name: Save image
+              run: |
+                  if [ -n "${ACT:-}" ]; then
+                    echo "Running locally with act: no gzip"
+                    docker save iot-chas-advance:ci -o image.tar
+                  else
+                    echo "Running on Github Actions: saving image with gzip"
+                    docker save iot-chas-advance:ci | gzip > image.tar.gz
+                  fi
+
+            - name: Upload image artifact
+              if: ${{!env.ACT}}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: iot-docker-image
+                  path: image.tar.gz
+
+    # Run container
+    docker-run:
+        runs-on: ubuntu-latest
+        needs: docker-build
         strategy:
             matrix:
-                board: [uno_r4_wifi, esp32_broker]
+                board: [uno_r4_wifi_ci, esp32_broker_ci]
                 include:
-                    - board: uno_r4_wifi
+                    - board: uno_r4_wifi_ci
                       folder: Arduino
-                    - board: esp32_broker
+                    - board: esp32_broker_ci
                       folder: S3
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-
-            - name: Build Docker image
-              run: docker build -t iot-chas-advance:ci .
-
-            - name: Run PlatformIO inside Docker
-              run: |
-                  docker run --rm iot-chas-advance:ci bash -c "cd /workspace/${{matrix.folder}} && pio run -e ${{ matrix.board }}"
-
-    cleanup:
-        runs-on: ubuntu-latest
-        needs: docker
-        steps:
-            - name: Checkout repo
-              uses: actions/checkout@v4
+            - name: Download Docker image
+              if: ${{!env.ACT}}
+              uses: actions/download-artifact@v4
               with:
-                  fetch-depth: 0 # important! ensures full history so we can amend
+                  name: iot-docker-image
+                  path: .
 
-            - name: Delete secrets.h and amend last commit
+            - name: Load Docker image
               run: |
-                  rm Arduino/include/secrets.h
-                  rm S3/include/secrets.h
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add -u
-                  git commit --amend --no-edit
-                  git push --force
+                  if [ -n "${ACT:-}" ]; then
+                    echo "Running locally with act: skip artifact!"
+                  else
+                    gunzip -c image.tar.gz | docker load
+                  fi
+
+            - name: Run PlatformIO inside Docker for ${{matrix.board}}
+              run: |
+                  docker run --rm \
+                  -e SECRET_SSID=${{secrets.SECRET_SSID}} \
+                  -e SECRET_PASSWORD=${{secrets.SECRET_PASSWORD}} \
+                  -e SERVER_IP1=${{secrets.SERVER_IP1}} \
+                  -e SERVER_IP2=${{secrets.SERVER_IP2}} \
+                  -e SERVER_IP3=${{secrets.SERVER_IP3}} \
+                  -e SERVER_IP4=${{secrets.SERVER_IP4}} \
+                  -e SERVER_PORT=${{secrets.SERVER_PORT}} \
+                  iot-chas-advance:ci \
+                  bash -c "cd /workspace/${{matrix.folder}} && pio run -e ${{ matrix.board }}"

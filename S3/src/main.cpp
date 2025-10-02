@@ -33,7 +33,8 @@ void setup()
     }
 
     // ssid and password should be placed in secrets.h
-    WiFi.begin(ssid, password);
+    // WiFi.begin(ssid, password);
+    WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
     Serial.print("Connecting server to Wifi");
 
     while (WiFi.status() != WL_CONNECTED)
