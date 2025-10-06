@@ -1,16 +1,16 @@
+#include "secrets.h"
 #include <Arduino.h>
 #include <WiFi.h>
-#include "secrets.h"
 
 WiFiClient client;
 WiFiServer server(5000);
-IPAddress local_IP(192, 168, 1, 184); // Ändra efter behov
-IPAddress gateway(192, 168, 1, 1);
-IPAddress subnet(255, 255, 255, 0);
+IPAddress  local_IP(192, 168, 1, 184); // Ändra efter behov
+IPAddress  gateway(192, 168, 1, 1);
+IPAddress  subnet(255, 255, 255, 0);
 // uint8_t buffer[4096];
-uint8_t buffer[256];    // temporarily test a smaller buffer
-char message[64];
-size_t bytes_read;
+uint8_t buffer[256]; // temporarily test a smaller buffer
+char    message[64];
+size_t  bytes_read;
 
 void setup()
 {
@@ -23,7 +23,8 @@ void setup()
         ++i;
     }
 
-    if (!WiFi.config(local_IP, gateway, subnet)) {
+    if (!WiFi.config(local_IP, gateway, subnet))
+    {
         Serial.println("Failed to config");
     }
 
@@ -52,9 +53,11 @@ void loop()
     {
         Serial.println("Client connected.");
 
-        while (client.connected()) {
-            if (client.available()) {
-                bytes_read = client.read(buffer, sizeof(buffer) - 1);
+        while (client.connected())
+        {
+            if (client.available())
+            {
+                bytes_read = client.read(buffer, (size_t) (sizeof(buffer) - 1));
                 buffer[bytes_read] = '\0';
 
                 snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
@@ -62,7 +65,7 @@ void loop()
                 // just to check message from client
                 Serial.println(message);
                 Serial.print("Message from client: ");
-                Serial.print((char*)buffer);
+                Serial.print((char *) buffer);
 
                 // send back response to client
                 client.print(message);

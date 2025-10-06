@@ -1,7 +1,8 @@
 #ifndef WIFI_MOCK_TYPE_H
 #define WIFI_MOCK_TYPE_H
 
-typedef enum {
+typedef enum
+{
     MOCK_WL_NO_SHIELD = 255,
     MOCK_WL_NO_MODULE = MOCK_WL_NO_SHIELD,
     MOCK_WL_IDLE_STATUS = 0,
