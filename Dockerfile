@@ -1,6 +1,13 @@
 FROM alpine:latest
+
+# Copy the data file into the container
 COPY data /tmp/data
+
+# Set working directory
 WORKDIR /tmp
+
+# Install netcat for sending data
 RUN apk add --no-cache netcat-openbsd
-# use host.docker.internal by default; override with TARGET_HOST env if needed
-CMD ["sh","-c","nc -q 0 ${TARGET_HOST:-host.docker.internal} 12345 < /tmp/data"]
+
+# Default command: uses arguments passed to docker run
+ENTRYPOINT ["sh", "-c", "nc -q 0 \"$1\" \"$2\" < /tmp/data", "--"]
