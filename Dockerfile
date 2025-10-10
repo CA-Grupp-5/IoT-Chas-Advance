@@ -10,4 +10,4 @@ WORKDIR /tmp
 RUN apk add --no-cache netcat-openbsd
 
 # Default command: uses arguments passed to docker run
-ENTRYPOINT ["sh", "-c", "nc -q 0 \"$1\" \"$2\" < /tmp/data", "--"]
+ENTRYPOINT ["sh", "-c", "nc -vq 0 \"$1\" \"$2\" < /tmp/data", "--"]
