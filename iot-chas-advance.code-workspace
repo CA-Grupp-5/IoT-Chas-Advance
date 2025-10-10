@@ -1,0 +1,19 @@
+{
+    "folders": [
+        {
+            "name": "Arduino",
+            "path": "Arduino"
+        },
+        {
+            "name": "S3",
+            "path": "S3"
+        }
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/.pio": true,
+            "**/.vscode": true
+        },
+        "C_Cpp.default.configurationProvider": "platformio"
+    }
+}
