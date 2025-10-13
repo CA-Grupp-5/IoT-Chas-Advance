@@ -1,6 +1,10 @@
-#include "secrets.h"
 #include <Arduino.h>
 #include <WiFi.h>
+#ifdef UNIT_TEST
+#include "secrets.example.h"
+#else
+#include "secrets.h"
+#endif
 
 WiFiClient client;
 WiFiServer server(5000);
@@ -29,7 +33,8 @@ void setup()
     }
 
     // ssid and password should be placed in secrets.h
-    WiFi.begin(ssid, password);
+    // WiFi.begin(ssid, password);
+    WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
     Serial.print("Connecting server to Wifi");
 
     while (WiFi.status() != WL_CONNECTED)

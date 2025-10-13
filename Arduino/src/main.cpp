@@ -1,6 +1,10 @@
-#include "WiFiS3.h"
-#include "secrets.h"
 #include <Arduino.h>
+#include "WiFiS3.h"
+#ifdef UNIT_TEST
+#include "secrets.example.h"
+#else
+#include "secrets.h"
+#endif
 
 WiFiClient client;
 IPAddress server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);

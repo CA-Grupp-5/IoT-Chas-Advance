@@ -1,0 +1,7 @@
+.git
+.gitignore
+**/.pio
+.vscode
+*.code-workspace
+docs/
+secrets.h
