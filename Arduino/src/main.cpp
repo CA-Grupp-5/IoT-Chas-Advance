@@ -7,23 +7,24 @@
 #endif
 
 WiFiClient client;
-IPAddress server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
-char ssid[ ] = SECRET_SSID;
-char pass[ ] = SECRET_PASSWORD;
-uint32_t start_time = 0;
-uint32_t current_time = 0;
-uint32_t time_left = 0; // mostly for checking time between transfer
-uint32_t last_sent = 0;
+IPAddress  server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
+char       ssid[] = SECRET_SSID;
+char       pass[] = SECRET_PASSWORD;
+uint32_t   start_time = 0;
+uint32_t   current_time = 0;
+uint32_t   time_left = 0;
+uint32_t   last_sent = 0;
+// const uint32_t interval = 20000;
 const uint32_t interval = 60000;
 const uint16_t port = SERVER_PORT;
+bool           waiting_reply = false;
 
-const char* mock_data =
-"{\n"
-"\"package_id\": 100,\n"
-"\"temperature_c\": 4.5,\n"
-"\"humidity_percent\": 72.1,\n"
-"\"battery\": 95\n"
-"}\n";
+const char *mock_data = "{\n"
+                        "\"package_id\": 100,\n"
+                        "\"temperature_c\": 4.5,\n"
+                        "\"humidity_percent\": 72.1,\n"
+                        "\"battery\": 95\n"
+                        "}\n";
 
 void printWifiStatus();
 
@@ -49,32 +50,48 @@ void setup()
         if ((millis() - start_time) > 30000)
         {
             Serial.println("\nFailed to connect after 30s");
-            while (true);
+            break;
         }
     }
 
-    printWifiStatus();
-
-    Serial.print("Connected to wifi.\n");
-
-    Serial.println("Connecting to server...");
-    if (client.connect(server, port))
+    if (WiFi.status() == WL_CONNECTED)
     {
-        Serial.println("Connected to server");
-        client.print("Sending a test message to the server!\n");
+        printWifiStatus();
+        Serial.print("Connected to wifi.\n");
     }
     else
     {
-        Serial.println("Connection to server failed");
+        Serial.println("WiFi connection failed");
+    }
+
+    Serial.println("Attempting first server connection...");
+    if (client.connect(server, port))
+    {
+        Serial.println("Successful connection to server. Sending test message...");
+        client.print("Initial handshake\n");
+        delay(200);
+        Serial.print("First server reply: ");
+        while (client.available())
+        {
+            char c = client.read();
+            Serial.print(c);
+        }
+        Serial.println();
+        client.stop();
+        Serial.println("First connection closed. Ready for continuous communication");
+    }
+    else
+    {
+        Serial.println("Connection to server failed. Will retry connection.");
     }
     last_sent = millis();
+    waiting_reply = false;
 }
 
 void loop()
 {
     current_time = millis();
 
-    // this is mostly to check time between data transfer, may remove later?
     static uint32_t last_countdown = 0;
     if (current_time - last_countdown >= 1000)
     {
@@ -92,42 +109,43 @@ void loop()
         }
     }
 
-    if ((current_time - last_sent >= interval))
+    if (waiting_reply && client.available())
     {
-        last_sent = current_time;
-
+        Serial.print("Server reply: ");
         while (client.available())
         {
             char c = client.read();
             Serial.print(c);
         }
-        if (!client.connected())
+        Serial.println();
+        waiting_reply = false;
+    }
+
+    if (!waiting_reply && client.connected())
+    {
+        client.stop();
+        Serial.println("Connection closed by client after sending data");
+    }
+
+    if ((current_time - last_sent >= interval) && !waiting_reply && !client.connected())
+    {
+        last_sent = current_time;
+
+        Serial.println("\nTrying to establish connection...");
+        if (client.connect(server, port))
         {
-            Serial.println("\nTrying to reconnect to ESP32");
-            if (client.connect(server, port))
-            {
-                Serial.println("Reconnected to ESP32");
-            }
-            else
-            {
-                Serial.println("Reconnection failed");
-                return;
-            }
-        }
-        if (client.connected())
-        {
+            Serial.println("Connection established. Sending data...");
             client.print(mock_data);
-            Serial.println("\nSending mock data to ESP32\n");
-            Serial.print(mock_data);
+            Serial.println("Data sent. Waiting server reply");
+            waiting_reply = true;
         }
         else
         {
-            Serial.println("Cannot send data, not connected to server.");
+            Serial.print("Connection failed. Skipping data transfer.");
         }
     }
     delay(10);
 }
-
 
 void printWifiStatus()
 {

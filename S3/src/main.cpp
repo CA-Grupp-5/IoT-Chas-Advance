@@ -11,6 +11,11 @@ WiFiServer server(5000);
 IPAddress  local_IP(192, 168, 1, 184); // Ändra efter behov
 IPAddress  gateway(192, 168, 1, 1);
 IPAddress  subnet(255, 255, 255, 0);
+// uint32_t last_client_message_time = 0;
+// uint32_t time_since_last_message = 0;
+// const uint32_t interval = 60000;
+// const uint32_t interval = 20000;
+// const uint32_t time_padding = 1000;
 // uint8_t buffer[4096];
 uint8_t buffer[256]; // temporarily test a smaller buffer
 char    message[64];
@@ -67,20 +72,24 @@ void loop()
 
                 snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
 
-                // just to check message from client
                 Serial.println(message);
+                client.print(message);
                 Serial.print("Message from client: ");
                 Serial.print((char *) buffer);
-
-                // send back response to client
-                client.print(message);
-                client.stop();
-
-                Serial.println("Server is listening...");
+                // last_client_message_time = millis();
             }
         }
         client.stop();
         Serial.println("Client disconnected. Server is listening...");
     }
-    delay(1000);
+
+    /*time_since_last_message = millis() - last_client_message_time;
+    if (time_since_last_message > (interval + time_padding) && last_client_message_time != 0)
+    {
+        Serial.print("Warning. Client message overdue. Time since last message: ");
+        Serial.print(time_since_last_message);
+        Serial.println(" ms.");
+    }*/
+
+    delay(100);
 }
