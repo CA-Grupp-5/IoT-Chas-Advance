@@ -1,19 +1,23 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#ifdef UNIT_TEST
+
+#define SECRETS
+
+#ifdef SECRETS
 #include "secrets.example.h"
 #else
 #include "secrets.h"
 #endif
 
+#include <SensorIO.h>
+
+SensorData sensor_data;
 WiFiClient client;
 WiFiServer server(5000);
 IPAddress  local_IP(192, 168, 1, 184); // Ändra efter behov
 IPAddress  gateway(192, 168, 1, 1);
 IPAddress  subnet(255, 255, 255, 0);
-// uint8_t buffer[4096];
-uint8_t buffer[256]; // temporarily test a smaller buffer
-char    message[64];
+char message[64];
 size_t  bytes_read;
 
 void setup()
@@ -62,15 +66,22 @@ void loop()
         {
             if (client.available())
             {
-                bytes_read = client.read(buffer, (size_t) (sizeof(buffer) - 1));
-                buffer[bytes_read] = '\0';
+                buffersFlush(&sensor_data, SIZE_BUF_SEND, SIZE_BODY, SIZE_BUF_RECV);
+
+                bytes_read = client.read((uint8_t *)sensor_data.buffer_recv, (size_t) (sizeof(sensor_data.buffer_recv) - 1));
+                sensor_data.buffer_recv[bytes_read] = '\0';
+                valuesExtract(&sensor_data);
+                sensor_data.length = httpBodyFormat(&sensor_data, SIZE_BODY);
+                httpRequestFormat(&sensor_data, SIZE_BUF_SEND);
+
+
 
                 snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
 
                 // just to check message from client
                 Serial.println(message);
                 Serial.print("Message from client: ");
-                Serial.print((char *) buffer);
+                Serial.print(sensor_data.buffer_recv);
 
                 // send back response to client
                 client.print(message);
