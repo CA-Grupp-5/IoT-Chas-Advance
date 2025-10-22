@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-#define SECRETS
+/* #define SECRETS */
 
-#ifdef SECRETS
+#ifndef SECRETS
 #include "secrets.example.h"
 #else
 #include "secrets.h"
