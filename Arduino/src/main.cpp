@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "WiFiS3.h"
-#ifdef UNIT_TEST
+
+#define SECRETS
+
+#ifndef SECRETS
 #include "secrets.example.h"
 #else
 #include "secrets.h"
@@ -17,13 +20,7 @@ uint32_t last_sent = 0;
 const uint32_t interval = 60000;
 const uint16_t port = SERVER_PORT;
 
-const char* mock_data =
-"{\n"
-"\"package_id\": 100,\n"
-"\"temperature_c\": 4.5,\n"
-"\"humidity_percent\": 72.1,\n"
-"\"battery\": 95\n"
-"}\n";
+const char* mock_data = "4 123 756";
 
 void printWifiStatus();
 
