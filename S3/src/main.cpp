@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-/* #define SECRETS */
+#define SECRETS
 
 #ifndef SECRETS
 #include "secrets.example.h"
@@ -68,7 +68,7 @@ void loop()
             {
                 buffersFlush(&sensor_data, SIZE_BUF_SEND, SIZE_BODY, SIZE_BUF_RECV);
 
-                bytes_read = client.read((uint8_t *)sensor_data.buffer_recv, (size_t) (sizeof(sensor_data.buffer_recv) - 1));
+                bytes_read = client.read((uint8_t *)sensor_data.buffer_recv, (size_t)(sizeof(sensor_data.buffer_recv) - 1));
                 sensor_data.buffer_recv[bytes_read] = '\0';
                 valuesExtract(&sensor_data);
                 sensor_data.length = httpBodyFormat(&sensor_data, SIZE_BODY);
@@ -76,12 +76,12 @@ void loop()
 
 
 
-                snprintf(message, sizeof(message), "Server received %d bytes.", bytes_read);
+                snprintf(message, sizeof(message), "Server received %d bytes.\n", bytes_read);
 
                 // just to check message from client
-                Serial.println(message);
-                Serial.print("Message from client: ");
-                Serial.print(sensor_data.buffer_recv);
+                Serial.println(sensor_data.buffer_send);
+                /* Serial.print("Message from client: ");
+                Serial.print(sensor_data.buffer_recv); */
 
                 // send back response to client
                 client.print(message);

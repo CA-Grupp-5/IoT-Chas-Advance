@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "WiFiS3.h"
 
-/* #define SECRETS */
+#define SECRETS
 
 #ifndef SECRETS
 #include "secrets.example.h"
