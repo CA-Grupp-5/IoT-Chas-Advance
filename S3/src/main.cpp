@@ -93,5 +93,14 @@ void loop()
         client.stop();
         Serial.println("Client disconnected. Server is listening...");
     }
-    delay(1000);
+
+    /*time_since_last_message = millis() - last_client_message_time;
+    if (time_since_last_message > (interval + time_padding) && last_client_message_time != 0)
+    {
+        Serial.print("Warning. Client message overdue. Time since last message: ");
+        Serial.print(time_since_last_message);
+        Serial.println(" ms.");
+    }*/
+
+    delay(100);
 }
