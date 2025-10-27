@@ -144,11 +144,6 @@ void updateSensorData(SensorPackage *package, float *hum, float *temp)
 
 void captureSensorData()
 {
-    /*
-    further enhancements:
-        - use the DHT11 just for humidity?
-        - Use DS18B20 temp sensor to read temperatures? Pros and cons?
-    */
     float hum = dht.readHumidity();
     float temp = dht.readTemperature();
     if (isnan(hum) || isnan(temp))
@@ -222,9 +217,8 @@ void runClient()
         }
         else
         {
-            Serial.println("Cannot send data, not connected to server.");
+            Serial.print("Connection failed. Skipping data transfer.");
         }
     }
-
     delay(10);
 }
