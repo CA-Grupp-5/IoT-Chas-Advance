@@ -94,7 +94,7 @@ void loop()
                 Serial.print(sensor_data.buffer_recv); */
 
                 client.print(message);
-                sendSensorLogs("PUT");
+                sendSensorLogs("POST");
                 break;
             }
         }
@@ -190,14 +190,10 @@ void printResponseStatus(WiFiClientSecure &client, const char *http_method)
                 }
             }
             if (response.length() == 0)
-            {
                 break;
-            }
         }
         if (!client.connected() || !client.available())
-        {
             break;
-        }
         delay(10);
     }
 }
