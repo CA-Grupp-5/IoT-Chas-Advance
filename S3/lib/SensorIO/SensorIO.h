@@ -32,6 +32,7 @@ int httpBodyFormat(SensorData *data, size_t size_http_body);
 
 /* Formats a request from a body and saves it into a buffer. Returns request size. */
 // int httpRequestFormat(SensorData *data, size_t size_buffer_send);
-int httpRequestFormat(SensorData *data, size_t size_buffer_send, const char *host, int port);
+int httpRequestFormat(SensorData *data, size_t size_buffer_send, const char *host, int port,
+                      const char *method);
 
 #endif

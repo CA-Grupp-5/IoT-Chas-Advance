@@ -11,7 +11,6 @@
 #endif
 
 #include "backend_ca_cert.h"
-
 #include <SensorIO.h>
 
 SensorData sensor_data;
@@ -29,7 +28,8 @@ const char *host = AZURE_HOST;
 const int   https_port = AZURE_PORT;
 const char *azure_root_ca = backend_root_ca;
 
-void sendDataAzure();
+void sendSensorLogs(const char *http_method);
+void printResponseStatus(WiFiClientSecure &client, const char *http_method);
 
 void setup()
 {
@@ -84,7 +84,7 @@ void loop()
                 sensor_data.buffer_recv[bytes_read] = '\0';
                 valuesExtract(&sensor_data);
                 sensor_data.length = httpBodyFormat(&sensor_data, SIZE_BODY);
-                httpRequestFormat(&sensor_data, SIZE_BUF_SEND, host, https_port);
+                // httpRequestFormat(&sensor_data, SIZE_BUF_SEND, host, https_port);
 
                 snprintf(message, sizeof(message), "Server received %d bytes.\n", bytes_read);
 
@@ -94,7 +94,7 @@ void loop()
                 Serial.print(sensor_data.buffer_recv); */
 
                 client.print(message);
-                sendDataAzure();
+                sendSensorLogs("PUT");
                 break;
             }
         }
@@ -104,41 +104,89 @@ void loop()
     delay(100);
 }
 
-void sendDataAzure()
+void sendSensorLogs(const char *http_method)
 {
     WiFiClientSecure client;
     client.setCACert(azure_root_ca);
 
-    Serial.printf("\nConnecting to %s:%d\n", host, https_port);
+    Serial.printf("\nConnecting for %s to %s:%d\n", http_method, host, https_port);
 
     if (!client.connect(host, https_port))
     {
         Serial.println("Connection failed");
         return;
     }
+    Serial.printf("Connection established to %s. Making %s request", host, http_method);
 
-    Serial.printf("Connection established to %s. Sending request", host);
-
-    int request = httpRequestFormat(&sensor_data, SIZE_BUF_SEND, host, https_port);
+    int request = httpRequestFormat(&sensor_data, SIZE_BUF_SEND, host, https_port, http_method);
 
     Serial.printf("Sending %d bytes request\n", request);
     client.print(sensor_data.buffer_send);
 
-    while (client.connected())
+    printResponseStatus(client, http_method);
+    client.stop();
+    Serial.println("Connection closed");
+}
+
+void printResponseStatus(WiFiClientSecure &client, const char *http_method)
+{
+    int success_status_code = 0;
+
+    if (strcmp(http_method, "POST") == 0)
+    {
+        success_status_code = 201;
+    }
+    else
+    {
+        success_status_code = 200;
+    }
+
+    int attempts = 0;
+    while (!client.available() && client.connected() && attempts < 100)
+    {
+        delay(10);
+        ++attempts;
+    }
+
+    while (client.connected() || client.available())
     {
         while (client.available())
         {
             String response = client.readStringUntil('\n');
             if (response.startsWith("HTTP/1.1"))
             {
-                Serial.println(response);
-                if (response.indexOf("201") != -1)
+                Serial.printf("Response: %s\n", response.c_str());
+                int received_status_code = response.substring(9).toInt();
+                if (received_status_code == success_status_code)
                 {
-                    Serial.println("Sensor logs added successfully");
+                    Serial.printf("Success: Sensor logs successfully %s (%d)\n", http_method,
+                                  success_status_code);
+                }
+                else if (received_status_code >= 200 && received_status_code < 300)
+                {
+                    Serial.printf("Success: Request successfully sent with status code (%d)\n",
+                                  received_status_code);
+                }
+                else if (received_status_code >= 300 && received_status_code < 400)
+                {
+                    Serial.printf("Success: Redirection with status code (%d)\n",
+                                  received_status_code);
+                }
+                else if (received_status_code >= 400 && received_status_code < 500)
+                {
+                    Serial.printf("Client Error: %s with status code (%d)\n",
+                                  ((strcmp(http_method, "PUT") == 0)
+                                       ? "Invalid package ID or invalid input data"
+                                       : "Bad request. Missing or invalid parameters"),
+                                  received_status_code);
+                }
+                else if (received_status_code >= 500 && received_status_code <= 511)
+                {
+                    Serial.printf("Server error (%d)\n", received_status_code);
                 }
                 else
                 {
-                    Serial.println("Error: Request failed");
+                    Serial.printf("Error in general with status code (%d)\n", received_status_code);
                 }
             }
             if (response.length() == 0)
@@ -146,12 +194,10 @@ void sendDataAzure()
                 break;
             }
         }
-        if (!client.available() && !client.connected())
+        if (!client.connected() || !client.available())
         {
             break;
         }
         delay(10);
     }
-    client.stop();
-    Serial.println("Connection closed");
 }
