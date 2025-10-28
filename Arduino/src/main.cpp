@@ -46,9 +46,9 @@ void runClient();
 
 void setup()
 {
+    sensorInit(&currentPackage);
     Serial.begin(115200);
     delay(2000);
-    sensorInit(&currentPackage);
     connectWifi();
     connectServer();
     last_sent = millis();
@@ -98,9 +98,7 @@ void connectServer()
     Serial.println("Connecting to Control Unit...");
     if (client.connect(server, port))
     {
-        Serial.println("Successful connection to server. Sending test message...");
-        delay(200);
-        client.print("Sending test message to ESP32");
+        Serial.println("Successful connection to server.");
     }
     else
     {
@@ -132,7 +130,7 @@ void printWifiStatus()
 void sensorInit(SensorPackage *package)
 {
     dht.begin();
-    package->id = 123456789;
+    package->id = 4;
     package->temperature = 0.0;
     package->humidity = 0.0;
 }
@@ -145,11 +143,6 @@ void updateSensorData(SensorPackage *package, float *hum, float *temp)
 
 void captureSensorData()
 {
-    /*
-    further enhancements:
-        - use the DHT11 just for humidity?
-        - Use DS18B20 temp sensor to read temperatures? Pros and cons?
-    */
     float hum = dht.readHumidity();
     float temp = dht.readTemperature();
     if (isnan(hum) || isnan(temp))
