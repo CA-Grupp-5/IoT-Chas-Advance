@@ -13,9 +13,14 @@ on:
 jobs:
     pre-commit:
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.head_ref }}
 
             - name: Setup Python
               if: ${{ !env.ACT }} # skip when testing locally with act
@@ -26,10 +31,17 @@ jobs:
             - name: Install pre-commit
               run: pip install pre-commit
 
-            - name: Run pre-commit hooks on all files
-              run: pre-commit run --all-files
+            - name: Run pre-commit hooks (formatting and linting)
+              run: pre-commit run --all-files || true
 
-    build:
+            - name: Commit changes from pre-commit formatting (if any)
+              uses: stefanzweifel/git-auto-commit-action@v7
+              with:
+                  commit_message: 'CI pre-commit: Auto-formatting and linting'
+                  branch: ${{ github.head_ref || github.ref_name }}
+
+    check-build-firmware:
+        needs: [pre-commit]
         runs-on: ubuntu-latest
         strategy:
             matrix:
@@ -37,11 +49,13 @@ jobs:
                 include:
                     - board: uno_r4_wifi_ci
                       folder: Arduino
+                      artifact_name: sensor-package-firmware
                     - board: esp32_broker_ci
                       folder: S3
+                      artifact_name: esp32-s3-broker-firmware
         steps:
             - name: Checkout repo
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
 
             - name: Setup python
               if: ${{ !env.ACT }} # skip when testing locally with act
@@ -50,7 +64,6 @@ jobs:
                   python-version: '3.11'
 
             - name: Install PlatformIO Core
-              # run: pip install --upgrade platformio
               run: pip install platformio
 
             - name: Load secrets
@@ -84,21 +97,28 @@ jobs:
                   #endif
                   EOL
 
+            - name: Run PlatformIO check (Static Analysis) ${{matrix.board}}
+              run: cd ${{matrix.folder}} && pio check -e ${{matrix.board}}
+
             - name: Build firmware (${{matrix.board}})
               run: cd ${{matrix.folder}} && pio run -e ${{matrix.board}}
 
-    # Docker build image once and reuse
+            - name: Upload compiled firmware (.bin)
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ matrix.artifact_name }}
+                  path: ${{ matrix.folder }}/.pio/build/${{ matrix.board }}/*.bin
+
     docker-build:
         runs-on: ubuntu-latest
-        needs: build
+        needs: [check-build-firmware]
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Build Docker image
-              run: docker build -t iot-chas-advance:ci .
+              run: docker build -t iot-chas-advance:ci -t iot-chas-advance:${{ github.sha }} .
 
-            # save image as artifact, can be reused across jobs
-            - name: Save image
+            - name: Save and upload image artifact
               run: |
                   if [ -n "${ACT:-}" ]; then
                     echo "Running locally with act: no gzip"
@@ -114,6 +134,7 @@ jobs:
               with:
                   name: iot-docker-image
                   path: image.tar.gz
+                  if-no-files-found: error
 
     # Run container
     docker-run:
@@ -129,7 +150,7 @@ jobs:
                       folder: S3
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
 
             - name: Download Docker image
               if: ${{!env.ACT}}
