@@ -218,9 +218,8 @@ void runClient()
         }
         else
         {
-            Serial.println("Cannot send data, not connected to server.");
+            Serial.print("Connection failed. Skipping data transfer.");
         }
     }
-
     delay(10);
 }
