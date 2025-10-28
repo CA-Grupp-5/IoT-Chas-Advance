@@ -5,4 +5,3 @@
 .vscode/extensions.json
 .vscode/ipch
 include/secrets.h
-old_main.cpp
