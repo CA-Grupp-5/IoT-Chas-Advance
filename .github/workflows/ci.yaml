@@ -38,9 +38,14 @@ jobs:
             - name: Run pre-commit hooks (formatting and linting)
               run: pre-commit run --all-files || true
 
+            # -----------------------------------------------------------------
+            # NOTE ABOUT THE CONDITIONAL:
             # skip autocommit when testing locally with act
+            # But also only auto-commit to protected branches (main and develop)
+            # to prevent ref errors/Git race conditions when pushing from a local feature/fix branch
+            # -----------------------------------------------------------------
             - name: Commit changes from pre-commit formatting (if any)
-              if: ${{ !env.ACT }}
+              if: ${{ !env.ACT && (github.ref == 'refs/head/main' || github.ref == 'refs/heads/develop') }}
               uses: stefanzweifel/git-auto-commit-action@v7
               with:
                   commit_message: 'CI pre-commit: Auto-formatting and linting'
