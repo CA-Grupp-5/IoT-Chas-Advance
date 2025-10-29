@@ -10,6 +10,8 @@ on:
         branches:
             - main
             - develop
+    # for manually running workflow without having to commit or push
+    workflow_dispatch:
 
 jobs:
     pre-commit:
@@ -23,8 +25,9 @@ jobs:
                   fetch-depth: 0
                   ref: ${{ github.head_ref }}
 
+            # skip Python when testing locally with act
             - name: Setup Python
-              if: ${{ !env.ACT }} # skip when testing locally with act
+              if: ${{ !env.ACT }}
               uses: actions/setup-python@v5
               with:
                   python-version: '3.11'
@@ -35,12 +38,19 @@ jobs:
             - name: Run pre-commit hooks (formatting and linting)
               run: pre-commit run --all-files || true
 
+            # skip autocommit when testing locally with act
             - name: Commit changes from pre-commit formatting (if any)
               if: ${{ !env.ACT }}
               uses: stefanzweifel/git-auto-commit-action@v7
               with:
                   commit_message: 'CI pre-commit: Auto-formatting and linting'
                   branch: ${{ github.head_ref || github.ref_name }}
+
+    # -------------------------------------------------------------------------
+    # Add unit tests job here
+    # If running tests, both boards need "native" environment in their platformio.ini
+    # Leave for now
+    # -------------------------------------------------------------------------
 
     check-build-firmware:
         needs: [pre-commit]
@@ -59,8 +69,9 @@ jobs:
             - name: Checkout repo
               uses: actions/checkout@v5
 
+            # skip Python when testing locally with act
             - name: Setup python
-              if: ${{ !env.ACT }} # skip when testing locally with act
+              if: ${{ !env.ACT }}
               uses: actions/setup-python@v5
               with:
                   python-version: '3.11'
@@ -68,7 +79,7 @@ jobs:
             - name: Install PlatformIO Core
               run: pip install platformio
 
-            - name: Load secrets
+            - name: Generate and load secrets
               run: |
                   if [ -n "${ACT:-}" ]; then
                     echo "Running with act, loading from .env"
@@ -82,6 +93,8 @@ jobs:
                     export SERVER_IP3=${{secrets.SERVER_IP3}}
                     export SERVER_IP4=${{secrets.SERVER_IP4}}
                     export SERVER_PORT=${{secrets.SERVER_PORT}}
+                    export AZURE_HOST=${{secrets.AZURE_HOST}}
+                    export AZURE_PORT=${{secrets.AZURE_PORT}}
                   fi
                   mkdir -p ${{matrix.folder}}/include
                   cat > ${{matrix.folder}}/include/secrets.h <<EOL
@@ -95,6 +108,8 @@ jobs:
                   #define SERVER_IP3 "${SERVER_IP3}"
                   #define SERVER_IP4 "${SERVER_IP4}"
                   #define SERVER_PORT "${SERVER_PORT}"
+                  #define AZURE_HOST "${AZURE_HOST}"
+                  #define AZURE_PORT "${AZURE_PORT}"
 
                   #endif
                   EOL
@@ -105,6 +120,7 @@ jobs:
             - name: Build firmware (${{matrix.board}})
               run: cd ${{matrix.folder}} && pio run -e ${{matrix.board}}
 
+            # saves the checked and compiled ready-to-flash .bin. Used to create firmware releases
             - name: Upload compiled firmware (.bin)
               uses: actions/upload-artifact@v4
               with:
@@ -122,7 +138,8 @@ jobs:
             - name: Build Docker image
               run: docker build -t iot-chas-advance:ci -t iot-chas-advance:${{ github.sha }} .
 
-            - name: Save and upload image artifact
+            # saves the Docker Image into a compressed file.
+            - name: Save Docker image as artifact
               run: |
                   if [ -n "${ACT:-}" ]; then
                     echo "Running locally with act: no gzip"
@@ -131,7 +148,7 @@ jobs:
                     echo "Running on Github Actions: saving image with gzip"
                     docker save iot-chas-advance:ci | gzip > image.tar.gz
                   fi
-
+            # uploads the compressed Docker Image as an artifact. Can be later used by a CD-pipeline for deployment
             - name: Upload image artifact
               if: ${{!env.ACT}}
               uses: actions/upload-artifact@v4
