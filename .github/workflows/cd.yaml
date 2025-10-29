@@ -1,0 +1,43 @@
+name: IoT Chas Advance CD Pipeline
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+permissions:
+    contents: write
+
+jobs:
+    release-firmware:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v5
+
+            - name: Generate release tag
+              id: tag
+              run: echo "RELEASE_TAG=v$(date +'%Y%m%d').${{ github.run.number }}" >> $GITHUB_OUTPUT
+
+            - name: Download firmware artifacts
+              uses: dawidd6/action-download-artifact@v11
+              with:
+                  workflow: ci.yaml
+                  name: all
+                  path: ./artifacts/ci-artifacts
+
+            - name: List firmware artifacts files (Debug)
+              run: find ./artifacts/ci-artifacts -type f
+
+            - name: Create Github Release and upload firmware assets
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ steps.tag.outputs.RELEASE_TAG }}
+                  name: Firmware release ${{ steps.tag.outputs.RELEASE_TAG }}
+                  body: |
+                      Firmware Assets release
+                      - Commit SHA: ${{ github.sha }}
+                  files: |
+                      ./artifacts/ci-artifacts/**/*.bin
+                      ./artifacts/ci-artifacts/**/*.hex
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
