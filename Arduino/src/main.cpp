@@ -16,24 +16,25 @@
 #define REPLY_TIMEOUT_MS 3000
 typedef struct
 {
-    int id;
+    int   id;
     float temperature;
     float humidity;
 } SensorPackage;
 
-DHT dht(DHTPIN, DHTTYPE);
-WiFiClient client;
-IPAddress server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
-SensorPackage currentPackage;
+DHT            dht(DHTPIN, DHTTYPE);
+WiFiClient     client;
+IPAddress      server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
+SensorPackage  currentPackage;
 uint32_t       current_time = 0;
 uint32_t       time_left = 0;
-uint32_t last_sent = 0;
-uint32_t reply_wait_start = 0;
+uint32_t       last_sent = 0;
+uint32_t       reply_wait_start = 0;
 const uint16_t port = SERVER_PORT;
-char ssid[ ] = SECRET_SSID;
-char pass[ ] = SECRET_PASSWORD;
-char rawPayload[PAYLOAD_BUFFER_SIZE];
-bool waiting_reply = false;
+char           ssid[] = SECRET_SSID;
+char           pass[] = SECRET_PASSWORD;
+char           rawPayload[PAYLOAD_BUFFER_SIZE];
+const char    *mock_data = "4 123 756";
+bool           waiting_reply = false;
 
 void sensorInit(SensorPackage *package);
 void connectWifi();
@@ -45,9 +46,9 @@ void runClient();
 
 void setup()
 {
+    sensorInit(&currentPackage);
     Serial.begin(115200);
     delay(2000);
-    sensorInit(&currentPackage);
     connectWifi();
     connectServer();
     last_sent = millis();
@@ -97,9 +98,7 @@ void connectServer()
     Serial.println("Connecting to Control Unit...");
     if (client.connect(server, port))
     {
-        Serial.println("Successful connection to server. Sending test message...");
-        delay(200);
-        client.print("Sending test message to ESP32");
+        Serial.println("Successful connection to server.");
     }
     else
     {
@@ -131,7 +130,7 @@ void printWifiStatus()
 void sensorInit(SensorPackage *package)
 {
     dht.begin();
-    package->id = 123456789;
+    package->id = 4;
     package->temperature = 0.0;
     package->humidity = 0.0;
 }
@@ -152,7 +151,8 @@ void captureSensorData()
         return;
     }
     updateSensorData(&currentPackage, &hum, &temp);
-    snprintf(rawPayload, sizeof(rawPayload), "%d %.2f %.2f", currentPackage.id, currentPackage.temperature, currentPackage.humidity);
+    snprintf(rawPayload, sizeof(rawPayload), "%d %.2f %.2f", currentPackage.id,
+             currentPackage.temperature, currentPackage.humidity);
     Serial.print("Data sent: ");
     Serial.println(rawPayload);
 }
@@ -191,7 +191,8 @@ void runClient()
 
     /* 1. when it's time to send, and the client isn't still connected to the server, and it's not
      * waiting for a reply ( = still previous connection) */
-    if ((current_time - last_sent >= TRANSMISSION_INTERVAL_MS) && !waiting_reply && !client.connected())
+    if ((current_time - last_sent >= TRANSMISSION_INTERVAL_MS) && !waiting_reply &&
+        !client.connected())
     {
         last_sent = current_time;
 
