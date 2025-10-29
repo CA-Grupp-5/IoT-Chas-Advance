@@ -17,8 +17,8 @@ WiFiServer server(5000);
 IPAddress  local_IP(192, 168, 1, 184); // Ändra efter behov
 IPAddress  gateway(192, 168, 1, 1);
 IPAddress  subnet(255, 255, 255, 0);
-char message[64];
-size_t  bytes_read;
+char       message[64];
+size_t     bytes_read;
 
 void setup()
 {
@@ -68,13 +68,12 @@ void loop()
             {
                 buffersFlush(&sensor_data, SIZE_BUF_SEND, SIZE_BODY, SIZE_BUF_RECV);
 
-                bytes_read = client.read((uint8_t *)sensor_data.buffer_recv, (size_t)(sizeof(sensor_data.buffer_recv) - 1));
+                bytes_read = client.read((uint8_t *) sensor_data.buffer_recv,
+                                         (size_t) (sizeof(sensor_data.buffer_recv) - 1));
                 sensor_data.buffer_recv[bytes_read] = '\0';
                 valuesExtract(&sensor_data);
                 sensor_data.length = httpBodyFormat(&sensor_data, SIZE_BODY);
                 httpRequestFormat(&sensor_data, SIZE_BUF_SEND);
-
-
 
                 snprintf(message, sizeof(message), "Server received %d bytes.\n", bytes_read);
 

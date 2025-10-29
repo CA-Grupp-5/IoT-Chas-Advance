@@ -11,18 +11,20 @@
 /* Contains data from sensors and buffers for HTTP requests */
 typedef struct
 {
-    int id, length, result;
+    int   id, length, result;
     float temperature, humidity;
-    char buffer_send[SIZE_BUF_SEND];
-    char http_body[SIZE_BODY];
-    char buffer_recv[SIZE_BUF_RECV];
-    
+    char  buffer_send[SIZE_BUF_SEND];
+    char  http_body[SIZE_BODY];
+    char  buffer_recv[SIZE_BUF_RECV];
+
 } SensorData;
 
 /* Flushes HTTP request buffers by filling them with blankspaces */
-void buffersFlush(SensorData *data, size_t size_buf_send, size_t size_http_body, size_t size_buf_recv);
+void buffersFlush(SensorData *data, size_t size_buf_send, size_t size_http_body,
+                  size_t size_buf_recv);
 
-/* Extracts sensor values from a buffer and saves them into individual variables. Returns number of values extracted. */
+/* Extracts sensor values from a buffer and saves them into individual variables. Returns number of
+ * values extracted. */
 int valuesExtract(SensorData *data);
 
 /* Formats a HTTP request body into a buffer. Returns body size. */
