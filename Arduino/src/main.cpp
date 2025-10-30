@@ -14,6 +14,7 @@
 #define PAYLOAD_BUFFER_SIZE 64
 #define TRANSMISSION_INTERVAL_MS 60000
 #define REPLY_TIMEOUT_MS 3000
+
 typedef struct
 {
     int   id;
@@ -21,20 +22,21 @@ typedef struct
     float humidity;
 } SensorPackage;
 
-DHT            dht(DHTPIN, DHTTYPE);
-WiFiClient     client;
-IPAddress      server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
-SensorPackage  currentPackage;
+DHT           dht(DHTPIN, DHTTYPE);
+WiFiClient    client;
+IPAddress     server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
+SensorPackage currentPackage;
+
 uint32_t       current_time = 0;
 uint32_t       time_left = 0;
 uint32_t       last_sent = 0;
 uint32_t       reply_wait_start = 0;
 const uint16_t port = SERVER_PORT;
+bool           waiting_reply = false;
 char           ssid[] = SECRET_SSID;
 char           pass[] = SECRET_PASSWORD;
 char           rawPayload[PAYLOAD_BUFFER_SIZE];
 const char    *mock_data = "4 123 756";
-bool           waiting_reply = false;
 
 void sensorInit(SensorPackage *package);
 void connectWifi();
@@ -161,14 +163,12 @@ void runClient()
 {
     current_time = millis();
 
-    /* 2. check server timeout */
     if (waiting_reply && (millis() - reply_wait_start) > REPLY_TIMEOUT_MS)
     {
         Serial.println("Warning: Server didn't respond in time.");
         waiting_reply = false;
     }
 
-    /* 3. when the client eventually receives the response from the server */
     if (waiting_reply && client.available())
     {
         Serial.print("Server reply: ");
@@ -181,16 +181,12 @@ void runClient()
         waiting_reply = false;
     }
 
-    /* 4. when the client is done waiting and the connection is still active ( = ready to close
-     * connection) */
     if (!waiting_reply && client.connected())
     {
         client.stop();
         Serial.println("Connection closed by client");
     }
 
-    /* 1. when it's time to send, and the client isn't still connected to the server, and it's not
-     * waiting for a reply ( = still previous connection) */
     if ((current_time - last_sent >= TRANSMISSION_INTERVAL_MS) && !waiting_reply &&
         !client.connected())
     {

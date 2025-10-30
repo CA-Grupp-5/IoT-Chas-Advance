@@ -7,7 +7,7 @@ class MockClient : public ClientInterface
   public:
     int connect(uint32_t ip, uint16_t port) override
     {
-        return 3; // atm, a bit lazy and simulating a successful connection
+        return 3;
     }
     int available() override
     {
@@ -15,7 +15,7 @@ class MockClient : public ClientInterface
     }
     int read() override
     {
-        return 'A'; // atm a bit lazy and simulating a single byte
+        return 'A';
     }
     void    stop() override {}
     uint8_t connected() override

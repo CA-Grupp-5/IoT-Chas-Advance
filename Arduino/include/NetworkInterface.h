@@ -14,10 +14,9 @@ class NetworkInterface
 class ClientInterface
 {
   public:
-    virtual int connect(uint32_t ip, uint16_t port) = 0;
-    virtual int available() = 0;
-    virtual int read() = 0;
-    // virtual int read(uint8_t *buf, size_t size) = 0;
+    virtual int     connect(uint32_t ip, uint16_t port) = 0;
+    virtual int     available() = 0;
+    virtual int     read() = 0;
     virtual void    stop() = 0;
     virtual uint8_t connected() = 0;
     virtual ~ClientInterface(){};
