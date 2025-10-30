@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 
-#define SECRETS
+// #define SECRETS
 
 #ifndef SECRETS
 #include "secrets.example.h"
