@@ -1,8 +1,20 @@
 #ifndef SENSORIO_H
 #define SENSORIO_H
 
+/* #define SECRETS */
+
+#ifndef SECRETS
+#include "secrets.example.h"
+#else
+#include "secrets.h"
+#endif
+
 #include <stdio.h>
 #include <string.h>
+#include <Arduino.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include "backend_ca_cert.h"
 
 #define SIZE_BUF_SEND 256
 #define SIZE_BODY 128
@@ -34,5 +46,10 @@ int httpBodyFormat(SensorData *data, size_t size_http_body);
 // int httpRequestFormat(SensorData *data, size_t size_buffer_send);
 int httpRequestFormat(SensorData *data, size_t size_buffer_send, const char *host, int port,
                       const char *method);
+
+void sensorLogsSend(SensorData *sensor_data, const char *method_http);
+void responseStatusPrint(WiFiClientSecure &client, const char *method_http);
+void printStringDelay(int delay_ms, const char *string);
+size_t sensorDataRead(WiFiClient *client, SensorData *sensor_data);
 
 #endif
