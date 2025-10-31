@@ -1,5 +1,12 @@
 #include <SensorIO.h>
 
+#define SECRETS
+#ifndef SECRETS
+#include "secrets.example.h"
+#else
+#include "secrets.h"
+#endif
+
 SensorData sensor_data;
 WiFiClient client;
 WiFiServer server(5000);
@@ -19,12 +26,13 @@ void setup()
 
     Serial.begin(115200);
 
+
     for (i = 0; i < 7; i++)
         printStringDelay(1000, ".");
 
     if (!WiFi.config(local_IP, gateway, subnet, primaryDNS))
         Serial.println("Failed to config");
-        
+
     WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
     Serial.print("Connecting server to Wifi");
 
@@ -46,24 +54,24 @@ void loop()
     if (!client)
         goto skip;
     Serial.println("Sensor package connected.");
-    
+
     while (client.connected())
     {
         if (!client.available())
             continue;
 
         buffersFlush(&sensor_data, SIZE_BUF_SEND, SIZE_BODY, SIZE_BUF_RECV);
-    
+
         bytes_read = sensorDataRead(&client, &sensor_data);
         valuesExtract(&sensor_data);
         sensor_data.length = httpBodyFormat(&sensor_data, SIZE_BODY);
         Serial.println(sensor_data.buffer_send);
-        
+
         snprintf(message, sizeof(message), "Server received %d bytes.\n", bytes_read);
         client.print(message);
 
         sensorLogsSend(&sensor_data, "POST");
-    
+
         break;
     }
     client.stop();

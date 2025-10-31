@@ -1,7 +1,7 @@
 #ifndef SENSORIO_H
 #define SENSORIO_H
 
-/* #define SECRETS */
+#define SECRETS
 
 #ifndef SECRETS
 #include "secrets.example.h"
@@ -33,7 +33,7 @@ typedef struct
 
 /* Flushes HTTP request buffers by filling them with blankspaces */
 void buffersFlush(SensorData *data, size_t size_buf_send, size_t size_http_body,
-                  size_t size_buf_recv);
+    size_t size_buf_recv);
 
 /* Extracts sensor values from a buffer and saves them into individual variables. Returns number of
  * values extracted. */
@@ -45,7 +45,7 @@ int httpBodyFormat(SensorData *data, size_t size_http_body);
 /* Formats a request from a body and saves it into a buffer. Returns request size. */
 // int httpRequestFormat(SensorData *data, size_t size_buffer_send);
 int httpRequestFormat(SensorData *data, size_t size_buffer_send, const char *host, int port,
-                      const char *method);
+    const char *method);
 
 void sensorLogsSend(SensorData *sensor_data, const char *method_http);
 void responseStatusPrint(WiFiClientSecure &client, const char *method_http);

@@ -1,28 +1,28 @@
 #include "SensorIO.h"
 
 int httpRequestFormat(SensorData *data, size_t size_buffer_send, const char *host, int port,
-                      const char *method)
+    const char *method)
 {
     return snprintf(data->buffer_send, size_buffer_send,
-                    // "POST /packages/%d/logs HTTP/1.1\r\n"
-                    "%s /packages/%d/logs HTTP/1.1\r\n"
-                    "Host: %s\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Content-Length: %d\r\n"
-                    "Connection: close\r\n"
-                    "\r\n"
-                    "%s",
-                    method, data->id, host, data->length, data->http_body);
+        // "POST /packages/%d/logs HTTP/1.1\r\n"
+        "%s /packages/%d/logs HTTP/1.1\r\n"
+        "Host: %s\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %d\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "%s",
+        method, data->id, host, data->length, data->http_body);
 }
 
 int httpBodyFormat(SensorData *data, size_t size_http_body)
 {
     return snprintf(data->http_body, size_http_body,
-                    "{\r\n"
-                    "    \"temperature\": %.2f,\r\n"
-                    "    \"humidity\": %.2f\r\n"
-                    "}",
-                    data->temperature, data->humidity);
+        "{\r\n"
+        "    \"temperature\": %.2f,\r\n"
+        "    \"humidity\": %.2f\r\n"
+        "}",
+        data->temperature, data->humidity);
 }
 
 int valuesExtract(SensorData *data)
@@ -31,7 +31,7 @@ int valuesExtract(SensorData *data)
 }
 
 void buffersFlush(SensorData *data, size_t size_buf_send, size_t size_http_body,
-                  size_t size_buf_recv)
+    size_t size_buf_recv)
 {
     memset(&data->buffer_send, ' ', size_buf_send);
     memset(&data->http_body, ' ', size_http_body);
@@ -45,8 +45,8 @@ size_t sensorDataRead(WiFiClient *client, SensorData *sensor_data)
 {
     size_t bytes_read = client->read
     (
-        (uint8_t *) sensor_data->buffer_recv,
-        (size_t) (sizeof(sensor_data->buffer_recv) - 1)
+        (uint8_t *)sensor_data->buffer_recv,
+        (size_t)(sizeof(sensor_data->buffer_recv) - 1)
     );
     sensor_data->buffer_recv[bytes_read] = '\0';
 
@@ -55,8 +55,8 @@ size_t sensorDataRead(WiFiClient *client, SensorData *sensor_data)
 
 void printStringDelay(int delay_ms, const char *string)
 {
-    Serial.print(string);
     delay(delay_ms);
+    Serial.print(string);
 }
 
 void sensorLogsSend(SensorData *sensor_data, const char *method_http)
@@ -124,7 +124,7 @@ void responseStatusPrint(WiFiClientSecure &client, const char *method_http)
                     method_http,
                     success_status_code
                 );
-            
+
             }
             else if (received_status_code >= 200 && received_status_code < 300)
             {
@@ -133,7 +133,7 @@ void responseStatusPrint(WiFiClientSecure &client, const char *method_http)
                     "Success: Request successfully sent with status code (%d)\n",
                     received_status_code
                 );
-            
+
             }
             else if (received_status_code >= 300 && received_status_code < 400)
             {
@@ -142,7 +142,7 @@ void responseStatusPrint(WiFiClientSecure &client, const char *method_http)
                     "Success: Redirection with status code (%d)\n",
                     received_status_code
                 );
-                
+
             }
             else if (received_status_code >= 400 && received_status_code < 500)
             {
@@ -151,18 +151,18 @@ void responseStatusPrint(WiFiClientSecure &client, const char *method_http)
                     "Client Error: %s with status code (%d)\n",
                     (
                         (strcmp(method_http, "PUT") == 0)
-                            ? "Invalid package ID or invalid input data"
-                            : "Bad request. Missing or invalid parameters"
-                    ),
+                        ? "Invalid package ID or invalid input data"
+                        : "Bad request. Missing or invalid parameters"
+                        ),
                     received_status_code
                 );
-            
+
             }
             else if (received_status_code >= 500 && received_status_code <= 511)
                 Serial.printf("Server error (%d)\n", received_status_code);
             else
                 Serial.printf("Error in general with status code (%d)\n", received_status_code);
-                
+
         skip_responseStatusPrint:
             if (response.length() == 0)
                 break;
