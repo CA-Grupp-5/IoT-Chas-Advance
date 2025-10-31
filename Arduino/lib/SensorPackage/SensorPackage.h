@@ -5,6 +5,7 @@
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <WiFiS3.h>
+#include "States.h"
 
 #define DHTPIN 7
 #define DHTTYPE DHT11
@@ -23,6 +24,7 @@ extern DHT            dht;
 extern WiFiClient     client;
 extern IPAddress      server;
 extern SensorPackage  currentPackage;
+extern State          state;
 extern uint32_t       current_time;
 extern uint32_t       time_left;
 extern uint32_t       last_sent;
@@ -32,14 +34,14 @@ extern bool           waiting_reply;
 extern char           ssid[];
 extern char           pass[];
 extern char           rawPayload[PAYLOAD_BUFFER_SIZE];
-extern const char    *mock_data;
 
 void connectWifi();
 void connectServer();
 void printWifiStatus();
+void handleReply();
 void sensorInit(SensorPackage *package);
-void updateSensorData(SensorPackage *package, float *hum, float *temp);
+void updateSensorData(SensorPackage *package);
 void captureSensorData();
-void runClient();
+void runSensorPackage();
 
 #endif

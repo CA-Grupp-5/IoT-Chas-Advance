@@ -10,28 +10,37 @@ DHT            dht(DHTPIN, DHTTYPE);
 WiFiClient     client;
 IPAddress      server(SERVER_IP1, SERVER_IP2, SERVER_IP3, SERVER_IP4);
 SensorPackage  currentPackage;
+State          state = STATE_INIT;
 uint32_t       current_time = 0;
-uint32_t       time_left = 0;
 uint32_t       last_sent = 0;
 uint32_t       reply_wait_start = 0;
 const uint16_t port = SERVER_PORT;
-bool           waiting_reply = false;
 char           ssid[] = SECRET_SSID;
 char           pass[] = SECRET_PASSWORD;
 char           rawPayload[PAYLOAD_BUFFER_SIZE];
-const char    *mock_data = "4 123 756";
 
 void connectWifi()
 {
+    uint32_t start_time;
     if (WiFi.status() == WL_NO_MODULE)
     {
         Serial.println("Communication with WiFi module failed");
-        while (true);
+        state = STATE_ERROR;
+        return;
     }
+
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        printWifiStatus();
+        Serial.print("Connected to wifi.\n");
+        state = STATE_CONNECT_SERVER;
+        return;
+    }
+
     Serial.print("Connecting client to WiFi");
     WiFi.begin(ssid, pass);
 
-    uint32_t start_time = millis();
+    start_time = millis();
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -40,31 +49,32 @@ void connectWifi()
         if ((millis() - start_time) > 30000)
         {
             Serial.println("\nFailed to connect after 30s");
-            break;
+            return;
         }
     }
-
-    if (WiFi.status() == WL_CONNECTED)
-    {
-        printWifiStatus();
-        Serial.print("Connected to wifi.\n");
-    }
-    else
-    {
-        Serial.println("WiFi connection failed");
-    }
+    state = STATE_CONNECT_SERVER;
+    printWifiStatus();
+    Serial.println("Connected to WiFi");
 }
 
 void connectServer()
 {
+    if (client.connected())
+    {
+        Serial.println("Already connected to control unit.");
+        state = STATE_SEND;
+        return;
+    }
     Serial.println("Connecting to Control Unit...");
     if (client.connect(server, port))
     {
         Serial.println("Successful connection to server.");
+        state = STATE_SEND;
     }
     else
     {
         Serial.println("Connection to server failed. Will retry connection.");
+        state = STATE_CONNECT_WIFI;
     }
 }
 
@@ -89,96 +99,141 @@ void printWifiStatus()
     Serial.println("------");
 }
 
+void handleReply()
+{
+    Serial.print("Server reply: ");
+    while (client.available())
+    {
+        char c = client.read();
+        Serial.print(c);
+    }
+
+    if (client.connected())
+    {
+        client.stop();
+        Serial.println("Connection closed after receiving reply");
+    }
+    Serial.println();
+    state = STATE_WAIT_INTERVAL;
+}
+
 void sensorInit(SensorPackage *package)
 {
     dht.begin();
     package->id = 4;
-    /*
-    Note: change this so that it uses captureSensor instead
-    */
-    package->temperature = 0.0;
-    package->humidity = 0.0;
+    updateSensorData(package);
+    state = STATE_CONNECT_WIFI;
 }
 
-void updateSensorData(SensorPackage *package, float *hum, float *temp)
-{
-    package->temperature = *(temp);
-    package->humidity = *(hum);
-}
-
-void captureSensorData()
+void updateSensorData(SensorPackage *package)
 {
     float hum = dht.readHumidity();
     float temp = dht.readTemperature();
     if (isnan(hum) || isnan(temp))
     {
-        Serial.println("Error: Failed to read from DHT sensor.");
+        Serial.println("Error: Failed to read temperature and humidity DHT sensor.");
+        state = STATE_WAIT_INTERVAL;
         return;
     }
-    updateSensorData(&currentPackage, &hum, &temp);
+    package->temperature = temp;
+    package->humidity = hum;
+}
+
+void captureSensorData()
+{
+    updateSensorData(&currentPackage);
+
+    if (state == STATE_WAIT_INTERVAL || state == STATE_ERROR)
+    {
+        Serial.println("Sensor error, skip data formatting until sensor issue is fixed.");
+        return;
+    }
+
     snprintf(rawPayload, sizeof(rawPayload), "%d %.2f %.2f", currentPackage.id,
              currentPackage.temperature, currentPackage.humidity);
     Serial.print("Data sent: ");
     Serial.println(rawPayload);
+    state = STATE_CONNECT_SERVER;
 }
 
-void runClient()
+void runSensorPackage()
 {
-    current_time = millis();
-
-    if (waiting_reply && (millis() - reply_wait_start) > REPLY_TIMEOUT_MS)
+    switch (state)
     {
-        Serial.println("Warning: Server didn't respond in time.");
-        waiting_reply = false;
-    }
+    case STATE_INIT:
+        Serial.println("Initializing sensors and sensor package.");
+        sensorInit(&currentPackage);
+        break;
 
-    if (waiting_reply && client.available())
-    {
-        Serial.print("Server reply: ");
-        while (client.available())
+    case STATE_CONNECT_WIFI:
+        Serial.println("Connecting to WiFi");
+        connectWifi();
+        break;
+
+    case STATE_CONNECT_SERVER:
+        connectServer();
+        break;
+
+    case STATE_WAIT_INTERVAL:
+        current_time = millis();
+        if (current_time - last_sent >= TRANSMISSION_INTERVAL_MS)
         {
-            char c = client.read();
-            Serial.print(c);
-        }
-        Serial.println();
-        waiting_reply = false;
-    }
-
-    if (!waiting_reply && client.connected())
-    {
-        client.stop();
-        Serial.println("Connection closed by client");
-    }
-
-    if ((current_time - last_sent >= TRANSMISSION_INTERVAL_MS) && !waiting_reply &&
-        !client.connected())
-    {
-        last_sent = current_time;
-
-        captureSensorData();
-
-        if (!client.connected())
-        {
-            Serial.println("\nTrying to establish connection...");
-            if (!client.connect(server, SERVER_PORT))
-            {
-                Serial.print("Connection failed. Skipping data transfer.");
-                return;
-            }
-            Serial.println("Reconnected!");
-        }
-
-        if (client.connected())
-        {
-            client.print(rawPayload);
-            Serial.println("\nSending raw data");
-            waiting_reply = true;
-            reply_wait_start = current_time;
+            last_sent = current_time;
+            state = STATE_SEND;
         }
         else
         {
-            Serial.print("Connection failed. Skipping data transfer.");
+            delay(10);
         }
+        break;
+
+    case STATE_SEND:
+        Serial.println("Reading and sending sensor data");
+        captureSensorData();
+
+        if (state != STATE_SEND)
+            break;
+
+        if (!client.connected())
+        {
+            Serial.println("Connection lost. Trying to connect again.");
+            state = STATE_CONNECT_SERVER;
+            break;
+        }
+
+        client.print(rawPayload);
+        Serial.println("Data sent. Waiting for reply from Control unit");
+        reply_wait_start = millis();
+        state = STATE_WAIT_REPLY;
+        break;
+
+    case STATE_WAIT_REPLY:
+        current_time = millis();
+        if (client.available())
+        {
+            handleReply();
+        }
+        else if ((current_time - reply_wait_start) > REPLY_TIMEOUT_MS)
+        {
+            Serial.println("Warning: Control Unit didn't respond in time.");
+            if (client.connected())
+            {
+                client.stop();
+            }
+            state = STATE_WAIT_INTERVAL;
+        }
+        else
+        {
+            delay(10);
+        }
+        break;
+
+    case STATE_ERROR:
+        Serial.println("ERROR STATE: Persistent sensor failure.");
+        delay(5000);
+        break;
+
+    default:
+        break;
     }
-    delay(10);
 }

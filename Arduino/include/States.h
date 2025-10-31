@@ -1,0 +1,15 @@
+#ifndef STATES_H
+#define STATES_H
+
+typedef enum
+{
+    STATE_INIT,
+    STATE_CONNECT_WIFI,
+    STATE_CONNECT_SERVER,
+    STATE_WAIT_INTERVAL,
+    STATE_SEND,
+    STATE_WAIT_REPLY,
+    STATE_ERROR
+} State;
+
+#endif
