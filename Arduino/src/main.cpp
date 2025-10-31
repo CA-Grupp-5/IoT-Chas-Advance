@@ -34,6 +34,7 @@ char           ssid[] = SECRET_SSID;
 char           pass[] = SECRET_PASSWORD;
 char           rawPayload[PAYLOAD_BUFFER_SIZE];
 const char    *mock_data = "4 123 756";
+
 bool           waiting_reply = false;
 
 void sensorInit(SensorPackage *package);
