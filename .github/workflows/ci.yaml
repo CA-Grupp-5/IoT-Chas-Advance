@@ -42,11 +42,11 @@ jobs:
             # -----------------------------------------------------------------
             # NOTE ABOUT THE CONDITIONAL:
             # skip autocommit when testing locally with act
-            # But also only auto-commit to protected branches (main and develop)
-            # to prevent ref errors/Git race conditions when pushing from a local feature/fix branch
+            # AND if the action was triggered by a direct Push
+            # AND the push can only be done to non-protected branched (feature-, fix-, etc)
             # -----------------------------------------------------------------
             - name: Commit changes from pre-commit formatting (if any)
-              if: ${{ !env.ACT && (github.ref == 'refs/head/main' || github.ref == 'refs/heads/develop') }}
+              if: ${{ !env.ACT && github.event_name == 'push &&' github.ref_name != 'main' && github.ref_name != 'develop' }}
               uses: stefanzweifel/git-auto-commit-action@v7
               with:
                   commit_message: 'CI pre-commit: Auto-formatting and linting'
