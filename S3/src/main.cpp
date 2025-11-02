@@ -1,6 +1,6 @@
 #include <SensorIO.h>
 
-WifiData wifi_data(5000, "192.168.1.184", "192.168.1.1", "255.255.255.0", "8.8.8.8");
+WifiData   wifi_data(LOCAL_PORT, LOCAL_IP, SUBNET, GATEWAY, PRIMARY_DNS);
 SensorData sensor_data;
 size_t     bytes_read;
 

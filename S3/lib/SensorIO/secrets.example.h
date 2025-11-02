@@ -7,4 +7,9 @@
 #define DEVICE_KEY "your_device_primary_key_or_sas_token"
 #define AZURE_HOST "your_azure_host"
 #define AZURE_PORT 80
+#define LOCAL_PORT 5000
+#define LOCAL_IP "192.168.1.184"
+#define SUBNET "192.168.1.1"
+#define GATEWAY "255.255.255.0"
+#define PRIMARY_DNS "8.8.8.8"
 #endif
