@@ -119,7 +119,7 @@ The CI pipeline runs for every push to a feature/fix branch and every Pull Reque
 1. pre-commit:
     - same pre-commit hook used in local development.
     - enforces code style standard and formatting before static analysis and compilation check
-    - only auto-commit formatting fixes on develop/main branches
+    - auto-formatting in CI-workflow on feature branches
     - triggers on push and pull requests.
 2. check-build-firmware:
     - runs only after `pre-commit` passes
