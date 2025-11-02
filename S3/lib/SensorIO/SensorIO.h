@@ -35,15 +35,18 @@ class WifiData
 {
 public:
     WiFiClient client;
-    WiFiServer server;
-    IPAddress  local_IP;
+    WiFiServer port_server;
+    IPAddress  local_ip;
     IPAddress  gateway;
     IPAddress  subnet;
-    IPAddress  primaryDNS;
+    IPAddress  primary_dns;
+    uint8_t bytes_ip[4];
+
+    void parseIP(uint8_t *dst, const char *src);
 
     WifiData
     (
-        const uint16_t port,
+        const uint16_t _port_server,
         const char *_local_ip,
         const char *_gateway,
         const char *_subnet,

@@ -1,20 +1,44 @@
 #include "SensorIO.h"
 
+void WifiData::parseIP(uint8_t *dst, const char *src)
+{
+    size_t i;
+    unsigned int temp[4];
+
+    sscanf
+    (
+        src, "%u.%u.%u.%u",
+        &temp[0],
+        &temp[1],
+        &temp[2],
+        &temp[3]
+    );
+    for (i = 0; i < 4; i++)
+        dst[i] = (uint8_t)temp[i];
+}
+
 WifiData::WifiData
 (
-    const uint16_t _port,
+    const uint16_t _port_server,
     const char *_local_ip,
     const char *_gateway,
     const char *_subnet,
     const char *_primary_dns
 )
 :
-    server(_port),
-    local_IP((uint8_t *)_local_ip),
-    gateway((uint8_t *)_gateway),
-    subnet((uint8_t *)_subnet),
-    primaryDNS((uint8_t *)_primary_dns)
+    port_server(_port_server)
 {
+    parseIP(bytes_ip, _local_ip);
+    local_ip = IPAddress(bytes_ip);
+    
+    parseIP(bytes_ip, _gateway);
+    gateway = IPAddress(bytes_ip);
+    
+    parseIP(bytes_ip, _subnet);
+    subnet = IPAddress(bytes_ip);
+    
+    parseIP(bytes_ip, _primary_dns);
+    primary_dns = IPAddress(bytes_ip);
 }
 
 int httpRequestFormat(SensorData *data, size_t size_buffer_send, const char *host, int port,
@@ -80,21 +104,21 @@ void sensorLogsSend(SensorData *sensor_data, const char *method_http)
 {
     WiFiClientSecure client;
     int request;
-    const int  https_port = AZURE_PORT;
+    const int  https_port_server = AZURE_PORT;
     const char *host = AZURE_HOST;
     const char *azure_root_ca = BACKEND_CA_ROOT;
 
     client.setCACert(azure_root_ca);
-    Serial.printf("\nConnecting for %s to %s:%d\n", method_http, host, https_port);
+    Serial.printf("\nConnecting for %s to %s:%d\n", method_http, host, https_port_server);
 
-    if (!client.connect(host, https_port))
+    if (!client.connect(host, https_port_server))
     {
         Serial.println("Connection failed");
         return;
     }
     Serial.printf("Connection established to %s. Making %s request", host, method_http);
 
-    request = httpRequestFormat(sensor_data, SIZE_BUF_SEND, host, https_port, method_http);
+    request = httpRequestFormat(sensor_data, SIZE_BUF_SEND, host, https_port_server, method_http);
     Serial.printf("Sending %d bytes request\n", request);
     client.print(sensor_data->buffer_send);
 
@@ -197,7 +221,7 @@ void runBroker(WifiData *wifi_data, SensorData *sensor_data)
     size_t bytes_read;
     char message[64];
 
-    wifi_data->client = wifi_data->server.available();
+    wifi_data->client = wifi_data->port_server.available();
     if (!wifi_data->client)
         goto skip;
     Serial.println("Sensor package connected.");
@@ -230,7 +254,7 @@ skip:
 
 void wifiInit(WifiData *wifi_data)
 {
-    if (!WiFi.config(wifi_data->local_IP, wifi_data->gateway, wifi_data->subnet, wifi_data->primaryDNS))
+    if (!WiFi.config(wifi_data->local_ip, wifi_data->gateway, wifi_data->subnet, wifi_data->primary_dns))
         Serial.println("Failed to config");
         
     WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
@@ -241,6 +265,6 @@ void wifiInit(WifiData *wifi_data)
     Serial.print("Connected.\nServer IP: ");
     Serial.println(WiFi.localIP());
 
-    wifi_data->server.begin();
+    wifi_data->port_server.begin();
     Serial.println("Server is listening...");
 }
