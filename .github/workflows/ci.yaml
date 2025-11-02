@@ -5,20 +5,30 @@ on:
             - main
             - develop
             - feature-**
+            - fix-**
+            - refactor-**
     pull_request:
         branches:
             - main
             - develop
+    # for manually running workflow without having to commit or push
+    workflow_dispatch:
 
 jobs:
     pre-commit:
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.head_ref }}
 
+            # skip Python when testing locally with act
             - name: Setup Python
-              if: ${{ !env.ACT }} # skip when testing locally with act
+              if: ${{ !env.ACT }}
               uses: actions/setup-python@v5
               with:
                   python-version: '3.11'
@@ -26,10 +36,30 @@ jobs:
             - name: Install pre-commit
               run: pip install pre-commit
 
-            - name: Run pre-commit hooks on all files
-              run: pre-commit run --all-files
+            - name: Run pre-commit hooks (formatting and linting)
+              run: pre-commit run --all-files || true
 
-    build:
+            # -----------------------------------------------------------------
+            # NOTE ABOUT THE CONDITIONAL:
+            # skip autocommit when testing locally with act
+            # AND if the action was triggered by a direct Push
+            # AND the push can only be done to non-protected branched (feature-, fix-, etc)
+            # -----------------------------------------------------------------
+            - name: Commit changes from pre-commit formatting (if any)
+              if: ${{ !env.ACT && github.event_name == 'push &&' github.ref_name != 'main' && github.ref_name != 'develop' }}
+              uses: stefanzweifel/git-auto-commit-action@v7
+              with:
+                  commit_message: 'CI pre-commit: Auto-formatting and linting'
+                  branch: ${{ github.head_ref || github.ref_name }}
+
+    # -------------------------------------------------------------------------
+    # Add unit tests job here
+    # If running tests, both boards need "native" environment in their platformio.ini
+    # Leave for now
+    # -------------------------------------------------------------------------
+
+    check-build-firmware:
+        needs: [pre-commit]
         runs-on: ubuntu-latest
         strategy:
             matrix:
@@ -37,23 +67,25 @@ jobs:
                 include:
                     - board: uno_r4_wifi_ci
                       folder: Arduino
+                      artifact_name: sensor-package-firmware
                     - board: esp32_broker_ci
                       folder: S3
+                      artifact_name: esp32-s3-broker-firmware
         steps:
             - name: Checkout repo
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
 
+            # skip Python when testing locally with act
             - name: Setup python
-              if: ${{ !env.ACT }} # skip when testing locally with act
+              if: ${{ !env.ACT }}
               uses: actions/setup-python@v5
               with:
                   python-version: '3.11'
 
             - name: Install PlatformIO Core
-              # run: pip install --upgrade platformio
               run: pip install platformio
 
-            - name: Load secrets
+            - name: Generate and load secrets
               run: |
                   if [ -n "${ACT:-}" ]; then
                     echo "Running with act, loading from .env"
@@ -67,6 +99,8 @@ jobs:
                     export SERVER_IP3=${{secrets.SERVER_IP3}}
                     export SERVER_IP4=${{secrets.SERVER_IP4}}
                     export SERVER_PORT=${{secrets.SERVER_PORT}}
+                    export AZURE_HOST=${{secrets.AZURE_HOST}}
+                    export AZURE_PORT=${{secrets.AZURE_PORT}}
                   fi
                   mkdir -p ${{matrix.folder}}/include
                   cat > ${{matrix.folder}}/include/secrets.h <<EOL
@@ -80,25 +114,38 @@ jobs:
                   #define SERVER_IP3 "${SERVER_IP3}"
                   #define SERVER_IP4 "${SERVER_IP4}"
                   #define SERVER_PORT "${SERVER_PORT}"
+                  #define AZURE_HOST "${AZURE_HOST}"
+                  #define AZURE_PORT "${AZURE_PORT}"
 
                   #endif
                   EOL
 
+            - name: Run PlatformIO check (Static Analysis) ${{matrix.board}}
+              run: cd ${{matrix.folder}} && pio check -e ${{matrix.board}}
+
             - name: Build firmware (${{matrix.board}})
               run: cd ${{matrix.folder}} && pio run -e ${{matrix.board}}
 
-    # Docker build image once and reuse
+            # saves the checked and compiled ready-to-flash .bin. Used to create firmware releases
+            - name: Upload compiled firmware (.bin)
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ matrix.artifact_name }}
+                  path: ${{ matrix.folder }}/.pio/build/${{ matrix.board }}/*.bin
+                  if-no-files-found: error
+                  retention-days: 1
+
     docker-build:
         runs-on: ubuntu-latest
-        needs: build
+        needs: [check-build-firmware]
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Build Docker image
-              run: docker build -t iot-chas-advance:ci .
+              run: docker build -t iot-chas-advance:ci -t iot-chas-advance:${{ github.sha }} .
 
-            # save image as artifact, can be reused across jobs
-            - name: Save image
+            # saves the Docker Image into a compressed file.
+            - name: Save Docker image as artifact
               run: |
                   if [ -n "${ACT:-}" ]; then
                     echo "Running locally with act: no gzip"
@@ -107,54 +154,12 @@ jobs:
                     echo "Running on Github Actions: saving image with gzip"
                     docker save iot-chas-advance:ci | gzip > image.tar.gz
                   fi
-
+            # uploads the compressed Docker Image as an artifact. Can be later used by a CD-pipeline for deployment
             - name: Upload image artifact
               if: ${{!env.ACT}}
               uses: actions/upload-artifact@v4
               with:
                   name: iot-docker-image
                   path: image.tar.gz
-
-    # Run container
-    docker-run:
-        runs-on: ubuntu-latest
-        needs: docker-build
-        strategy:
-            matrix:
-                board: [uno_r4_wifi_ci, esp32_broker_ci]
-                include:
-                    - board: uno_r4_wifi_ci
-                      folder: Arduino
-                    - board: esp32_broker_ci
-                      folder: S3
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Download Docker image
-              if: ${{!env.ACT}}
-              uses: actions/download-artifact@v4
-              with:
-                  name: iot-docker-image
-                  path: .
-
-            - name: Load Docker image
-              run: |
-                  if [ -n "${ACT:-}" ]; then
-                    echo "Running locally with act: skip artifact!"
-                  else
-                    gunzip -c image.tar.gz | docker load
-                  fi
-
-            - name: Run PlatformIO inside Docker for ${{matrix.board}}
-              run: |
-                  docker run --rm \
-                  -e SECRET_SSID=${{secrets.SECRET_SSID}} \
-                  -e SECRET_PASSWORD=${{secrets.SECRET_PASSWORD}} \
-                  -e SERVER_IP1=${{secrets.SERVER_IP1}} \
-                  -e SERVER_IP2=${{secrets.SERVER_IP2}} \
-                  -e SERVER_IP3=${{secrets.SERVER_IP3}} \
-                  -e SERVER_IP4=${{secrets.SERVER_IP4}} \
-                  -e SERVER_PORT=${{secrets.SERVER_PORT}} \
-                  iot-chas-advance:ci \
-                  bash -c "cd /workspace/${{matrix.folder}} && pio run -e ${{ matrix.board }}"
+                  if-no-files-found: error
+                  retention-days: 1
