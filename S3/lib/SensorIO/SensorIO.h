@@ -1,7 +1,7 @@
 #ifndef SENSORIO_H
 #define SENSORIO_H
 
-#define SECRETS
+/* #define SECRETS */
 
 #ifndef SECRETS
 #include "secrets.example.h"
@@ -31,6 +31,26 @@ typedef struct
 
 } SensorData;
 
+class WifiData
+{
+public:
+    WiFiClient client;
+    WiFiServer server;
+    IPAddress  local_IP;
+    IPAddress  gateway;
+    IPAddress  subnet;
+    IPAddress  primaryDNS;
+
+    WifiData
+    (
+        const uint16_t port,
+        const char *_local_ip,
+        const char *_gateway,
+        const char *_subnet,
+        const char *_primary_dns
+    );
+};
+
 /* Flushes HTTP request buffers by filling them with blankspaces */
 void buffersFlush(SensorData *data, size_t size_buf_send, size_t size_http_body,
     size_t size_buf_recv);
@@ -51,5 +71,7 @@ void sensorLogsSend(SensorData *sensor_data, const char *method_http);
 void responseStatusPrint(WiFiClientSecure &client, const char *method_http);
 void printStringDelay(int delay_ms, const char *string);
 size_t sensorDataRead(WiFiClient *client, SensorData *sensor_data);
+void wifiInit(WifiData *wifi_data);
+void runBroker(WifiData *wifi_data, SensorData *sensor_data);
 
 #endif

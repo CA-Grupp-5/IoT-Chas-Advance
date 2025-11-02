@@ -1,5 +1,22 @@
 #include "SensorIO.h"
 
+WifiData::WifiData
+(
+    const uint16_t _port,
+    const char *_local_ip,
+    const char *_gateway,
+    const char *_subnet,
+    const char *_primary_dns
+)
+:
+    server(_port),
+    local_IP((uint8_t *)_local_ip),
+    gateway((uint8_t *)_gateway),
+    subnet((uint8_t *)_subnet),
+    primaryDNS((uint8_t *)_primary_dns)
+{
+}
+
 int httpRequestFormat(SensorData *data, size_t size_buffer_send, const char *host, int port,
     const char *method)
 {
@@ -173,4 +190,57 @@ void responseStatusPrint(WiFiClientSecure &client, const char *method_http)
         delay(10);
     }
 
+}
+
+void runBroker(WifiData *wifi_data, SensorData *sensor_data)
+{
+    size_t bytes_read;
+    char message[64];
+
+    wifi_data->client = wifi_data->server.available();
+    if (!wifi_data->client)
+        goto skip;
+    Serial.println("Sensor package connected.");
+    
+    while (wifi_data->client.connected())
+    {
+        if (!wifi_data->client.available())
+            continue;
+
+        buffersFlush(sensor_data, SIZE_BUF_SEND, SIZE_BODY, SIZE_BUF_RECV);
+    
+        bytes_read = sensorDataRead(&wifi_data->client, sensor_data);
+        valuesExtract(sensor_data);
+        sensor_data->length = httpBodyFormat(sensor_data, SIZE_BODY);
+        Serial.println(sensor_data->buffer_send);
+        
+        snprintf(message, sizeof(message), "Server received %d bytes.\n", bytes_read);
+        wifi_data->client.print(message);
+
+        sensorLogsSend(sensor_data, "POST");
+    
+        break;
+    }
+    wifi_data->client.stop();
+    Serial.println("Client disconnected. Server is listening...");
+
+skip:
+    delay(100);
+}
+
+void wifiInit(WifiData *wifi_data)
+{
+    if (!WiFi.config(wifi_data->local_IP, wifi_data->gateway, wifi_data->subnet, wifi_data->primaryDNS))
+        Serial.println("Failed to config");
+        
+    WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
+    Serial.print("Connecting server to Wifi");
+
+    while (WiFi.status() != WL_CONNECTED)
+        printStringDelay(500, ".");
+    Serial.print("Connected.\nServer IP: ");
+    Serial.println(WiFi.localIP());
+
+    wifi_data->server.begin();
+    Serial.println("Server is listening...");
 }
