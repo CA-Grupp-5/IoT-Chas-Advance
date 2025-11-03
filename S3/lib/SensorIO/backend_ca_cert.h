@@ -1,5 +1,5 @@
-#define BACKEND_CA_ROOT \
-    "-----BEGIN CERTIFICATE-----\n" \
+#define BACKEND_CA_ROOT                                                  \
+    "-----BEGIN CERTIFICATE-----\n"                                      \
     "MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh\n" \
     "MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3\n" \
     "d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH\n" \
@@ -19,6 +19,5 @@
     "Fdtom/DzMNU+MeKNhJ7jitralj41E6Vf8PlwUHBHQRFXGU7Aj64GxJUTFy8bJZ91\n" \
     "8rGOmaFvE7FBcf6IKshPECBV1/MUReXgRPTqh5Uykw7+U0b6LJ3/iyK5S9kJRaTe\n" \
     "pLiaWN0bfVKfjllDiIGknibVb63dDcY3fe0Dkhvld1927jyNxF1WW6LZZm6zNTfl\n" \
-    "MrY=\n" \
+    "MrY=\n"                                                             \
     "-----END CERTIFICATE-----\n"
-    
